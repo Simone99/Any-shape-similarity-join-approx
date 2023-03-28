@@ -1,12 +1,9 @@
-#include "Database.h"
+#include "Database.hpp"
 #include <bits/stdc++.h>
 #include <iostream>
 #include <fstream>
 #define SEPARATOR "**************************************************************"
 #define FILE_NAME "input_database.txt"
-
-int N_MAX_RECORDS = 50;
-float MAX_RECORD_VALUE = 10.0;
 
 float randomFloat()
 {
@@ -41,10 +38,7 @@ Database::Database(const int n_sets, const int d){
             output_file << i << std::endl;
             std::vector<Point> tmp;
             for(int j = 0; j < N_MAX_RECORDS; j++){
-                Point tmp_point;
-                for(int k = 0; k < d; k++){
-                    tmp_point.coordinates.emplace_back(randomFloat());
-                }
+                Point tmp_point = this->generate_random_point(d);
                 output_file << tmp_point << std::endl;
                 tmp.emplace_back(tmp_point);
             }
@@ -57,6 +51,25 @@ Database::Database(const int n_sets, const int d){
 
 const std::unordered_map<int, std::vector<Point>>& Database::getData() const{
     return this->data;
+};
+
+std::vector<std::pair<int, std::vector<Point>>> Database::get_random_points(int percentage){
+    std::vector<std::pair<int, std::vector<Point>>> result;
+    for(const std::pair<int, std::vector<Point>> pair : this->data){
+        int random_number = (std::rand() / (float) RAND_MAX) * 100.0;
+        if(random_number < percentage){
+            result.emplace_back(pair);
+        }
+    }
+    return result;
+};
+
+Point Database::generate_random_point(int d){
+    Point tmp_point;
+    for(int k = 0; k < d; k++){
+        tmp_point.coordinates.emplace_back(randomFloat());
+    }
+    return tmp_point;
 };
 
 std::ostream& operator<<(std::ostream& os, const Database& obj){

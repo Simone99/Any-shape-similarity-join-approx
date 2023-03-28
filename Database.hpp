@@ -7,6 +7,9 @@
 #include <istream>
 #include <cmath>
 
+#define N_MAX_RECORDS 50
+#define MAX_RECORD_VALUE 10.0
+
 struct Point{
     std::vector<float> coordinates;
 
@@ -64,6 +67,8 @@ class Database{
         Database(const int n_sets, const int d);
         const std::unordered_map<int, std::vector<Point>>& getData() const;
         friend std::ostream& operator<<(std::ostream& os, const Database& obj);
+        std::vector<std::pair<int, std::vector<Point>>> get_random_points(int percentage);
+        Point generate_random_point(int d);
 
 };
 

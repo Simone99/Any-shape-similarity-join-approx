@@ -3,7 +3,7 @@
 #
 
 target :
-	g++ -g -Wall -o main main.cpp Database.cpp Grid.cpp InputParser.cpp
+	g++ -g -Wall -o main main.cpp Database.cpp Grid.cpp
 
 clean :
 	rm -f file3_text.txt

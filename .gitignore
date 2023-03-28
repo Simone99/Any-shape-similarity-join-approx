@@ -4,3 +4,7 @@ input_database.txt
 main
 query_result_test.txt
 query_result.txt
+Test_results.txt
+Test_results_50.txt
+Test_results_100.txt
+Test_results_1000.txt

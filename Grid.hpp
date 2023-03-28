@@ -1,17 +1,17 @@
 #ifndef __GRID__
 #define __GRID__
 
-#include "Database.h"
-#include "AvlTree.h"
+#include "Database.hpp"
+#include "AvlTree.hpp"
 
 class Grid{
     
     private:
 
-        Node<Cell>* cells;
-        Node<Cell*>* active_cells_tree;
+        AVLTree<Cell> cells;
+        AVLTree<Cell*> active_cells_tree;
         float eps, R;
-        void update_mc(Node<Cell>* cell_node, int color, bool addition);
+        void update_mc(AVLNode<Cell>* cell_node, int color, bool addition);
 
     public:
         Grid(const Database& db, const float eps, const float R);

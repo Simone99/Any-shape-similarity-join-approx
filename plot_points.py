@@ -1,3 +1,5 @@
+# Script to plot 2D triangle similarity join data
+
 import matplotlib.pyplot as plt
 import copy
 

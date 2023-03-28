@@ -1,8 +1,7 @@
-#include "Grid.h"
+#include "Grid.hpp"
 #include <functional>
 #include <iostream>
 #include <fstream>
-using namespace std;
 
 Grid::Grid(const Database& db, const float eps, const float R){
     this->eps = eps;
@@ -17,26 +16,27 @@ Grid::Grid(const Database& db, const float eps, const float R){
 };
 
 void Grid::answer_query(){
-  std::vector<Node<Cell*>*> tree_vec_active;
-  std::vector<Node<Cell>*> tree_vec;
-  ofstream output_file;
-  tree_to_vec(this->active_cells_tree, tree_vec_active);
-  tree_to_vec(this->cells, tree_vec);
-  output_file.open("query_result.txt", ios::out | ios::trunc);
-  for(Node<Cell*>* c : tree_vec_active){
-    if(c->key->points_set.count(0) > 0){
-      for(Node<Cell>* c1 : tree_vec){
-        if(c1->key.points_set.count(1) > 0 && *c->key != c1->key && c->key->distance_from(c1->key) <= this->R){
-          for(Node<Cell>* c2 : tree_vec){
-            if(c2->key.points_set.count(2) > 0 &&
-                *c->key != c2->key &&
-                c1->key != c2->key &&
-                c->key->distance_from(c2->key) <= this->R &&
-                c1->key.distance_from(c2->key) <= this->R){
+  std::vector<AVLNode<Cell*>*> tree_vec_active = this->active_cells_tree.to_vec();
+  std::vector<AVLNode<Cell>*> tree_vec = this->cells.to_vec();
+  std::ofstream output_file;
+  output_file.open("query_result.txt", std::ios::out | std::ios::trunc);
+  for(AVLNode<Cell*>* c : tree_vec_active){
+    Cell* c_key = *(c->get_key());
+    if(c_key->points_set.count(0) > 0){
+      for(AVLNode<Cell>* c1 : tree_vec){
+        Cell* c1_key = c1->get_key();
+        if(c1_key->points_set.count(1) > 0 && *c_key != *c1_key && c_key->distance_from(*c1_key) <= this->R){
+          for(AVLNode<Cell>* c2 : tree_vec){
+            Cell* c2_key = c2->get_key();
+            if(c2_key->points_set.count(2) > 0 &&
+                *c_key != *c2_key &&
+                *c1_key != *c2_key &&
+                c_key->distance_from(*c2_key) <= this->R &&
+                c1_key->distance_from(*c2_key) <= this->R){
               // Loop throught all the points and return all the triples
-              for(const Point& a : c->key->points_set[0]){
-                for(const Point& b : c1->key.points_set[1]){
-                  for(const Point& cc : c2->key.points_set[2]){
+              for(const Point& a : c_key->points_set[0]){
+                for(const Point& b : c1_key->points_set[1]){
+                  for(const Point& cc : c2_key->points_set[2]){
                     output_file << a << " - " << b << " - " << cc << std::endl;
                   }
                 }
@@ -50,38 +50,38 @@ void Grid::answer_query(){
   output_file.close();
 };
 
-void Grid::update_mc(Node<Cell>* cell_node, int color, bool addition){
-  std::vector<Node<Cell>*> tree_vec;
-  tree_to_vec(this->cells, tree_vec);
+void Grid::update_mc(AVLNode<Cell>* cell_node, int color, bool addition){
+  std::vector<AVLNode<Cell>*> tree_vec = this->cells.to_vec();
+  Cell* cell_node_key = cell_node->get_key();
   if(color == 0){
-    for(Node<Cell>* c1 : tree_vec){
-      if(c1->key.points_set.count(1) > 0 && cell_node->key != c1->key && cell_node->key.distance_from(c1->key) <= this->R){
-        for(Node<Cell>* c2 : tree_vec){
-          if(c2->key.points_set.count(2) > 0 &&
-              cell_node->key != c2->key &&
-              c1->key != c2->key &&
-              cell_node->key.distance_from(c2->key) <= this->R &&
-              c1->key.distance_from(c2->key) <= this->R){
+    for(AVLNode<Cell>* c1 : tree_vec){
+      Cell* c1_key = c1->get_key();
+      if(c1_key->points_set.count(1) > 0 && *cell_node_key != *c1_key && cell_node_key->distance_from(*c1_key) <= this->R){
+        for(AVLNode<Cell>* c2 : tree_vec){
+          Cell* c2_key = c2->get_key();
+          if(c2_key->points_set.count(2) > 0 &&
+              *cell_node_key != *c2_key &&
+              *c1_key != *c2_key &&
+              cell_node_key->distance_from(*c2_key) <= this->R &&
+              c1_key->distance_from(*c2_key) <= this->R){
             if(addition){
-              cell_node->key.mc += c1->key.points_set[1].size() * c2->key.points_set[2].size();
-              if(cell_node->key.mc > 0){
+              cell_node_key->mc += c1_key->points_set[1].size() * c2_key->points_set[2].size();
+              if(cell_node_key->mc > 0){
                 // Check if the cell already exists in the active cells tree
-                Node<Cell*>* cell_active = getNode(this->active_cells_tree, &(cell_node->key));
-                if(cell_active == NULL){
-                    cell_node->key.active = true;
-                    cell_active = insertNode(this->active_cells_tree, &(cell_node->key));
-                    if(this->active_cells_tree != cell_active)
-                        this->active_cells_tree = cell_active;
+                AVLNode<Cell*>* cell_active = this->active_cells_tree.get(cell_node_key);
+                if(cell_active == nullptr){
+                    cell_node_key->active = true;
+                    this->active_cells_tree.insert(cell_node_key);
                 }
               }
             }else{
-              cell_node->key.mc -= c1->key.points_set[1].size() * c2->key.points_set[2].size();
-              if(cell_node->key.mc <= 0){
+              cell_node_key->mc -= c1_key->points_set[1].size() * c2_key->points_set[2].size();
+              if(cell_node_key->mc <= 0){
                 // Check if the cell already exists in the active cells tree
-                Node<Cell*>* cell_active = getNode(this->active_cells_tree, &(cell_node->key));
-                if(cell_active != NULL){
-                    cell_node->key.active = false;
-                    this->active_cells_tree = deleteNode(this->active_cells_tree, &(cell_node->key));
+                AVLNode<Cell*>* cell_active = this->active_cells_tree.get(cell_node_key);
+                if(cell_active != nullptr){
+                    cell_node_key->active = false;
+                    this->active_cells_tree.pop(cell_node_key);
                 }
               }
             }
@@ -90,34 +90,34 @@ void Grid::update_mc(Node<Cell>* cell_node, int color, bool addition){
       }
     }
   }else if(color == 1){
-    for(Node<Cell>* c1 : tree_vec){
-      if(c1->key.points_set.count(0) > 0 && cell_node->key != c1->key && cell_node->key.distance_from(c1->key) <= this->R){
-        for(Node<Cell>* c2 : tree_vec){
-          if(c2->key.points_set.count(2) > 0 &&
-              cell_node->key != c2->key &&
-              c1->key != c2->key &&
-              cell_node->key.distance_from(c2->key) <= this->R &&
-              c1->key.distance_from(c2->key) <= this->R){
+    for(AVLNode<Cell>* c1 : tree_vec){
+      Cell* c1_key = c1->get_key();
+      if(c1_key->points_set.count(0) > 0 && *cell_node_key != *c1_key && cell_node_key->distance_from(*c1_key) <= this->R){
+        for(AVLNode<Cell>* c2 : tree_vec){
+          Cell* c2_key = c2->get_key();
+          if(c2_key->points_set.count(2) > 0 &&
+              *cell_node_key != *c2_key &&
+              *c1_key != *c2_key &&
+              cell_node_key->distance_from(*c2_key) <= this->R &&
+              c1_key->distance_from(*c2_key) <= this->R){
             if(addition){
-              c1->key.mc += c1->key.points_set[0].size() * c2->key.points_set[2].size();
-              if(cell_node->key.mc > 0){
+              c1_key->mc += c1_key->points_set[0].size() * c2_key->points_set[2].size();
+              if(c1_key->mc > 0){
                 // Check if the cell already exists in the active cells tree
-                Node<Cell*>* cell_active = getNode(this->active_cells_tree, &(cell_node->key));
-                if(cell_active == NULL){
-                    c1->key.active = true;
-                    cell_active = insertNode(this->active_cells_tree, &(cell_node->key));
-                    if(this->active_cells_tree != cell_active)
-                        this->active_cells_tree = cell_active;
+                AVLNode<Cell*>* cell_active = this->active_cells_tree.get(c1_key);
+                if(cell_active == nullptr){
+                    c1_key->active = true;
+                    this->active_cells_tree.insert(c1_key);
                 }
               }
             }else{
-              c1->key.mc -= c1->key.points_set[0].size() * c2->key.points_set[2].size();
-              if(cell_node->key.mc <= 0){
+              c1_key->mc -= c1_key->points_set[0].size() * c2_key->points_set[2].size();
+              if(c1_key->mc <= 0){
                 // Check if the cell already exists in the active cells tree
-                Node<Cell*>* cell_active = getNode(this->active_cells_tree, &(cell_node->key));
-                if(cell_active != NULL){
-                    c1->key.active = false;
-                    this->active_cells_tree = deleteNode(this->active_cells_tree, &(cell_node->key));
+                AVLNode<Cell*>* cell_active = this->active_cells_tree.get(c1_key);
+                if(cell_active != nullptr){
+                    c1_key->active = false;
+                    this->active_cells_tree.pop(c1_key);
                 }
               }
             }
@@ -126,34 +126,34 @@ void Grid::update_mc(Node<Cell>* cell_node, int color, bool addition){
       }
     }
   }else if(color == 2){
-    for(Node<Cell>* c1 : tree_vec){
-      if(c1->key.points_set.count(0) > 0 && cell_node->key != c1->key && cell_node->key.distance_from(c1->key) <= this->R){
-        for(Node<Cell>* c2 : tree_vec){
-          if(c2->key.points_set.count(1) > 0 &&
-              cell_node->key != c2->key &&
-              c1->key != c2->key &&
-              cell_node->key.distance_from(c2->key) <= this->R &&
-              c1->key.distance_from(c2->key) <= this->R){
+    for(AVLNode<Cell>* c1 : tree_vec){
+      Cell* c1_key = c1->get_key();
+      if(c1_key->points_set.count(0) > 0 && *cell_node_key != *c1_key && cell_node_key->distance_from(*c1_key) <= this->R){
+        for(AVLNode<Cell>* c2 : tree_vec){
+          Cell* c2_key = c2->get_key();
+          if(c2_key->points_set.count(1) > 0 &&
+              *cell_node_key != *c2_key &&
+              *c1_key != *c2_key &&
+              cell_node_key->distance_from(*c2_key) <= this->R &&
+              c1_key->distance_from(*c2_key) <= this->R){
             if(addition){
-              c1->key.mc += c1->key.points_set[0].size() * c2->key.points_set[1].size();
-              if(cell_node->key.mc > 0){
+              c1_key->mc += c1_key->points_set[0].size() * c2_key->points_set[1].size();
+              if(c1_key->mc > 0){
                 // Check if the cell already exists in the active cells tree
-                Node<Cell*>* cell_active = getNode(this->active_cells_tree, &(cell_node->key));
-                if(cell_active == NULL){
-                    c1->key.active = true;
-                    cell_active = insertNode(this->active_cells_tree, &(cell_node->key));
-                    if(this->active_cells_tree != cell_active)
-                        this->active_cells_tree = cell_active;
+                AVLNode<Cell*>* cell_active = this->active_cells_tree.get(c1_key);
+                if(cell_active == nullptr){
+                    c1_key->active = true;
+                    this->active_cells_tree.insert(c1_key);
                 }
               }
             }else{
-              c1->key.mc -= c1->key.points_set[0].size() * c2->key.points_set[1].size();
-              if(cell_node->key.mc <= 0){
+              c1_key->mc -= c1_key->points_set[0].size() * c2_key->points_set[1].size();
+              if(c1_key->mc <= 0){
                 // Check if the cell already exists in the active cells tree
-                Node<Cell*>* cell_active = getNode(this->active_cells_tree, &(cell_node->key));
-                if(cell_active != NULL){
-                    c1->key.active = false;
-                    this->active_cells_tree = deleteNode(this->active_cells_tree, &(cell_node->key));
+                AVLNode<Cell*>* cell_active = this->active_cells_tree.get(c1_key);
+                if(cell_active != nullptr){
+                    c1_key->active = false;
+                    this->active_cells_tree.pop(c1_key);
                 }
               }
             }
@@ -175,15 +175,13 @@ void Grid::add_point(int color, const Point& p){
       coordinates: cell_coordinates
   };
   // Check if the cell already exists
-  Node<Cell>* cell_node = getNode(this->cells, cell_tmp);
-  if(cell_node == NULL){
+  AVLNode<Cell>* cell_node = this->cells.get(cell_tmp);
+  if(cell_node == nullptr){
       cell_tmp.points_set[color].emplace_back(p);
-      cell_node = insertNode(this->cells, cell_tmp);
-      if(this->cells != cell_node)
-          this->cells = cell_node;
-      cell_node = getNode(this->cells, cell_tmp);
+      this->cells.insert(cell_tmp);
+      cell_node = this->cells.get(cell_tmp);
   }else{
-      cell_node->key.points_set[color].emplace_back(p);
+      cell_node->get_key()->points_set[color].emplace_back(p);
   }
   this->update_mc(cell_node, color, true);
 };
@@ -199,29 +197,30 @@ void Grid::delete_point(int color, const Point& p){
       coordinates: cell_coordinates
   };
   // Check if the cell already exists
-  Node<Cell>* cell_node = getNode(this->cells, cell_tmp);
-  if(cell_node == NULL)
+  AVLNode<Cell>* cell_node = this->cells.get(cell_tmp);
+  if(cell_node == nullptr)
     return;
   // Check if the color exists
-  if(cell_node->key.points_set.count(color) <= 0)
+  Cell* cell_node_key = cell_node->get_key();
+  if(cell_node_key->points_set.count(color) <= 0)
     return;
   // Look for the element to delete
   long unsigned int i = 0;
-  for(i = 0; i < cell_node->key.points_set[color].size(); i++){
-    if(cell_node->key.points_set[color][i] == p){
+  for(i = 0; i < cell_node_key->points_set[color].size(); i++){
+    if(cell_node_key->points_set[color][i] == p){
       break;
     }
   }
   // If the point doesn't exist return
-  if(i == cell_node->key.points_set[color].size())
+  if(i == cell_node_key->points_set[color].size())
     return;
-  // Remove the element
-  cell_node->key.points_set[color].erase(cell_node->key.points_set[color].begin() + i);
   //Update mc
   this->update_mc(cell_node, color, false);
+  // Remove the element
+  cell_node_key->points_set[color].erase(cell_node_key->points_set[color].begin() + i);
   // Check if the cell is now empty
   bool empty = true;
-  for(const std::pair<int, std::vector<Point>> n : cell_node->key.points_set){
+  for(const std::pair<int, std::vector<Point>> n : cell_node_key->points_set){
     if(n.second.size() > 0){
       empty = false;
       break;
@@ -229,7 +228,9 @@ void Grid::delete_point(int color, const Point& p){
   }
   // If empty delete it first from the active cell tree and then from the non-empty cells tree
   if(empty){
-    this->active_cells_tree = deleteNode(this->active_cells_tree, &cell_node->key);
-    this->cells = deleteNode(this->cells, cell_node->key);
+    // If the cell is empty and the point removed was of 0 color than it has already been removed from
+    // active cells tree by update_mc function.
+    //this->active_cells_tree = deleteNode(this->active_cells_tree, &cell_node->key);
+    this->cells.pop(*cell_node_key);
   }
 };
