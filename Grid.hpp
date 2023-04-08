@@ -3,6 +3,7 @@
 
 #include "Database.hpp"
 #include "AvlTree.hpp"
+#define QUERY_RESULT_OUTPUT_FILE "query_result.txt"
 
 class Grid{
     

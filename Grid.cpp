@@ -19,7 +19,7 @@ void Grid::answer_query(){
   std::vector<AVLNode<Cell*>*> tree_vec_active = this->active_cells_tree.to_vec();
   std::vector<AVLNode<Cell>*> tree_vec = this->cells.to_vec();
   std::ofstream output_file;
-  output_file.open("query_result.txt", std::ios::out | std::ios::trunc);
+  output_file.open(QUERY_RESULT_OUTPUT_FILE, std::ios::out | std::ios::trunc);
   for(AVLNode<Cell*>* c : tree_vec_active){
     Cell* c_key = *(c->get_key());
     if(c_key->points_set.count(0) > 0){
