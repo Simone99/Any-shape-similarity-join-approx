@@ -3,6 +3,8 @@
 import matplotlib.pyplot as plt
 import copy
 
+colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+
 def pointStr_to_point(point_str):
     result = []
     point_str = point_str.strip()
@@ -14,46 +16,44 @@ def pointStr_to_point(point_str):
         result.append(float(coordinate))
     return tuple(result)
 
-def draw_points(point_map):
-    point_map[0] = [*set(point_map[0])]
-    point_map[1] = [*set(point_map[1])]
-    point_map[2] = [*set(point_map[2])]
-    x = [point[0] for point in point_map[0]]
-    y = [point[1] for point in point_map[0]]
-    plt.scatter(x, y, c='#0000ff', vmin=0, vmax=100)
-    x = [point[0] for point in point_map[1]]
-    y = [point[1] for point in point_map[1]]
-    plt.scatter(x, y, c='#ff0000', vmin=0, vmax=100)
-    x = [point[0] for point in point_map[2]]
-    y = [point[1] for point in point_map[2]]
-    plt.scatter(x, y, c='#00ff00', vmin=0, vmax=100)
+def draw_points(point_map, length):
+    for i in range(length):
+        point_map[i] = [*set(point_map[i])]
+        x = [point[0] for point in point_map[i]]
+        y = [point[1] for point in point_map[i]]
+        plt.scatter(x, y, c=colors[i], vmin=0, vmax=10)
 
-def draw_edges(point_map):
-    for i in range(len(point_map[0])):
-        x = [point_map[0][i][0], point_map[1][i][0]]
-        y = [point_map[0][i][1], point_map[1][i][1]]
-        plt.plot(x, y, color='#000000')
-        x = [point_map[1][i][0], point_map[2][i][0]]
-        y = [point_map[1][i][1], point_map[2][i][1]]
-        plt.plot(x, y, color='#000000')
-        x = [point_map[2][i][0], point_map[0][i][0]]
-        y = [point_map[2][i][1], point_map[0][i][1]]
+def draw_edges(points, edges):
+    for edge in edges:
+        x = [points[edge[0]][0], points[edge[1]][0]]
+        y = [points[edge[0]][1], points[edge[1]][1]]
         plt.plot(x, y, color='#000000')
         
 
 if __name__ == '__main__':
-    point_map = {
-        0: [],
-        1: [],
-        2: []
-    }
+
+    V = None
+    edge_list = []
+    with open("input_graph.txt", 'r') as graph_file:
+        V = int(graph_file.readline())
+        E = int(graph_file.readline())
+        for i in range(E):
+            edges_str = graph_file.readline().strip().split(" ")
+            edge_list.append((int(edges_str[0]), int(edges_str[1])))
+
+    point_map = {}
+    for i in range(V):
+        point_map[i] = []
     with open("query_result.txt", "r") as f:
         for line in f.readlines():
             points_str = line.strip().split(' - ')
+            points = []
             key = 0
             for point_str in points_str:
-                point_map[key].append(pointStr_to_point(point_str))
+                tmp = pointStr_to_point(point_str)
+                point_map[key].append(tmp)
+                points.append(tmp)
                 key += 1
-    draw_edges(copy.deepcopy(point_map))
-    draw_points(point_map)
+            draw_edges(points, edge_list)
+    draw_points(point_map, V)
     plt.show()

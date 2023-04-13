@@ -7,7 +7,7 @@
 #include <istream>
 #include <cmath>
 
-#define N_MAX_RECORDS 1000
+#define N_MAX_RECORDS 50
 #define MAX_RECORD_VALUE 10.0
 
 struct Point{
