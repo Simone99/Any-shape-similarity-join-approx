@@ -3,6 +3,8 @@
 #include <fstream>
 #include <chrono>
 #include <queue>
+#include <string>
+#include <sstream>
 
 #define GRAPH_FILE "input_graph.txt"
 #define OUT_NAME "Test_results.txt"
