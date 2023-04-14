@@ -75,7 +75,7 @@ void test_case(Graph& g, float R, int n_dimensions, float eps, std::ofstream& ou
             // Initialize variables
             bool real = true;
             // Start BFS loop
-            while (!Q.empty())
+            while (!Q.empty() && real)
             {
                 int v_j = Q.front();
                 Q.pop();

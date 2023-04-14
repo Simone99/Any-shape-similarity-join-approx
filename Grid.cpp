@@ -19,7 +19,7 @@ Grid::Grid(const Database& db, const Graph& g, const float eps, const float R){
 
 void Grid::answer_query(const Graph& g){
   for(AVLNode<Cell*>* solution : this->active_cells_tree.to_vec()){
-    this->update_mc(this->cells.get(**solution->get_key()), g, 0, false, true, [&](const std::vector<std::list<Cell*>>& cells_by_vertex){
+    this->update_mc(this->cells.get(**solution->get_key()), g, 0, [&](const std::vector<std::list<Cell*>>& cells_by_vertex){
 
       auto report_all_points = [&](Cell** solution, int pos, Point** final_combination, std::ofstream& output_f, auto&& report_all_points){
         if(pos >= g.V){
@@ -60,15 +60,7 @@ void Grid::answer_query(const Graph& g){
   }
 };
 
-void Grid::update_mc(AVLNode<Cell>* cell_node, const Graph& g, int color, bool addition, bool answer, auto&& lambda){
-  if(!answer){
-    if(cell_node->get_key()->m[color] > 0){
-      cell_node->get_key()->m[color] += 1;
-      return;
-    }
-    //Insertion in the case m[color] is equal to 0
-    cell_node->get_key()->m[color] += 1;
-  }
+void Grid::update_mc(AVLNode<Cell>* cell_node, const Graph& g, int color, auto&& lambda){
   // Queue for BFS
   std::queue<int> Q;
   // Initialize bool vector for keeping track of visited nodes
@@ -143,58 +135,81 @@ void Grid::add_point(int color, const Point& p, const Graph& g){
       cell_node = this->cells.get(cell_tmp);
   }
   cell_node->get_key()->points_set[color].emplace_back(p);
-  this->update_mc(cell_node, g, color, true, false, [&](const std::vector<std::list<Cell*>>& cells_by_vertex){
-    // Set B_c to true for cells stored in vertex 0 and store them in the active cells tree
+  cell_node->get_key()->m[color] += 1;
+  this->update_mc(cell_node, g, color, [&](const std::vector<std::list<Cell*>>& cells_by_vertex){
+    // Update m_c for all cells in cells_by_vertex[0]
+    int n_solutions = 1;
+    for(int i = 1; i < g.V; i++){
+      for(Cell* c : cells_by_vertex[i]){
+        n_solutions *= c->m[i];
+      }
+    }
     for(Cell* c1 : cells_by_vertex[0]){
-      c1->B_c = true;
+      c1->m_c = c1->m[0] * n_solutions;
       this->active_cells_tree.insert(c1);
     }
   });
 };
 
-void Grid::delete_point(int color, const Point& p){
-  // std::vector<int> cell_coordinates;
-  // for(const float coordinate : p.coordinates){
-  //     cell_coordinates.emplace_back(coordinate / this->eps);
-  // }
-  // Cell cell_tmp = {
-  //     coordinates: cell_coordinates
-  // };
-  // // Check if the cell already exists
-  // AVLNode<Cell>* cell_node = this->cells.get(cell_tmp);
-  // if(cell_node == nullptr)
-  //   return;
-  // // Check if the color exists
-  // Cell* cell_node_key = cell_node->get_key();
-  // if(cell_node_key->points_set.count(color) <= 0)
-  //   return;
-  // // Look for the element to delete
-  // long unsigned int i = 0;
-  // for(i = 0; i < cell_node_key->points_set[color].size(); i++){
-  //   if(cell_node_key->points_set[color][i] == p){
-  //     break;
-  //   }
-  // }
-  // // If the point doesn't exist return
-  // if(i == cell_node_key->points_set[color].size())
-  //   return;
-  // //Update mc
-  // this->update_mc(cell_node, color, false);
-  // // Remove the element
-  // cell_node_key->points_set[color].erase(cell_node_key->points_set[color].begin() + i);
-  // // Check if the cell is now empty
-  // bool empty = true;
-  // for(const std::pair<int, std::vector<Point>> n : cell_node_key->points_set){
-  //   if(n.second.size() > 0){
-  //     empty = false;
-  //     break;
-  //   }
-  // }
-  // // If empty delete it first from the active cell tree and then from the non-empty cells tree
-  // if(empty){
-  //   // If the cell is empty and the point removed was of 0 color than it has already been removed from
-  //   // active cells tree by update_mc function.
-  //   //this->active_cells_tree = deleteNode(this->active_cells_tree, &cell_node->key);
-  //   this->cells.pop(*cell_node_key);
-  // }
+void Grid::delete_point(Graph& g, int color, const Point& p){
+  std::vector<int> cell_coordinates;
+  for(const float coordinate : p.coordinates){
+      cell_coordinates.emplace_back(coordinate / this->eps);
+  }
+  Cell cell_tmp = {
+      coordinates: cell_coordinates
+  };
+  // Check if the cell already exists
+  AVLNode<Cell>* cell_node = this->cells.get(cell_tmp);
+  if(cell_node == nullptr)
+    return;
+  // Check if the color exists
+  Cell* cell_node_key = cell_node->get_key();
+  if(cell_node_key->points_set.count(color) <= 0)
+    return;
+  // Look for the element to delete
+  long unsigned int i = 0;
+  for(i = 0; i < cell_node_key->points_set[color].size(); i++){
+    if(cell_node_key->points_set[color][i] == p){
+      break;
+    }
+  }
+  // If the point doesn't exist return
+  if(i == cell_node_key->points_set[color].size())
+    return;
+  //Update mc
+  this->update_mc(cell_node, g, color, [&](const std::vector<std::list<Cell*>>& cells_by_vertex){
+
+    // Remove the element
+    cell_node_key->points_set[color].erase(cell_node_key->points_set[color].begin() + i);
+    cell_node_key->m[color]--;
+
+    // Update m_c for all cells in cells_by_vertex[0]
+    int n_solutions = 1;
+    for(int i = 1; i < g.V; i++){
+      for(Cell* c : cells_by_vertex[i]){
+        n_solutions *= c->m[i];
+      }
+    }
+    for(Cell* c1 : cells_by_vertex[0]){
+      c1->m_c = c1->m[0] * n_solutions;
+      if(c1->m_c == 0){
+        this->active_cells_tree.pop(c1);
+      }
+    }
+
+    // Handle the case in which the cell is empty
+    // Check if the cell is now empty
+    bool empty = true;
+    for(const std::pair<int, std::vector<Point>> n : cell_node_key->points_set){
+      if(n.second.size() > 0){
+        empty = false;
+        break;
+      }
+    }
+    // If empty delete it first from the active cell tree and then from the non-empty cells tree
+    if(empty){
+      this->cells.pop(*cell_node_key);
+    }
+  });
 };

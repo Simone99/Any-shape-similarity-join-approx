@@ -11,7 +11,7 @@
 struct Cell{
     std::unordered_map<int, std::vector<Point>> points_set;
     std::vector<int> m;
-    bool B_c;
+    int m_c;
     std::vector<int> coordinates;
 
     float distance_from(const Cell& other){
@@ -62,7 +62,7 @@ struct Cell{
                 os << p << std::endl;
             }
         }
-        os << "Active: " << obj.B_c << std::endl;
+        os << "Number of solutions: " << obj.m_c << std::endl;
         for(long unsigned int i = 0; i < obj.m.size(); i++){
             os << "m" << i << ": " << obj.m[i] << std::endl;
         }
