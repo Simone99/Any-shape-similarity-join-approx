@@ -13,8 +13,6 @@ float randomFloat()
 Database::Database(const int n_sets, const int d){
     std::ifstream input_file(FILE_NAME);
     if(input_file.good()){
-        int sets = 0, dim = 0;
-        input_file >> sets >> dim;
         while(input_file){
             int color = 0;
             input_file >> color;
@@ -33,7 +31,6 @@ Database::Database(const int n_sets, const int d){
     }else{
         std::ofstream output_file;
         output_file.open(FILE_NAME, std::ios::out | std::ios::trunc);
-        output_file << n_sets << " " << d <<std::endl;
         for(int i = 0; i < n_sets; i++){
             output_file << i << std::endl;
             std::vector<Point> tmp;
