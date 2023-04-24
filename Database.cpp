@@ -10,6 +10,10 @@ float randomFloat()
     return ((float)(std::rand()) / (float)(RAND_MAX)) * MAX_RECORD_VALUE;
 }
 
+Database::Database(){
+
+};
+
 Database::Database(const int n_sets, const int d){
     std::ifstream input_file(FILE_NAME);
     if(input_file.good()){
@@ -50,15 +54,20 @@ const std::unordered_map<int, std::vector<Point>>& Database::getData() const{
     return this->data;
 };
 
-std::vector<std::pair<int, std::vector<Point>>> Database::get_random_points(int percentage){
-    std::vector<std::pair<int, std::vector<Point>>> result;
+std::vector<Database> Database::split_points(int percentage){
+    Database db1, db2;
     for(const std::pair<int, std::vector<Point>> pair : this->data){
-        int random_number = (std::rand() / (float) RAND_MAX) * 100.0;
-        if(random_number < percentage){
-            result.emplace_back(pair);
+        int random_number;
+        for(const Point& p : pair.second){
+            random_number = (std::rand() / (float) RAND_MAX) * 100.0;
+            if(random_number < percentage){
+                db1.data[pair.first].push_back(p);
+            }else{
+                db2.data[pair.first].push_back(p);
+            }
         }
     }
-    return result;
+    return std::vector<Database> {db1, db2};
 };
 
 Point Database::generate_random_point(int d){

@@ -6,6 +6,7 @@
 #include "Cell.hpp"
 #include "Graph.hpp"
 #define QUERY_RESULT_OUTPUT_FILE "query_result.txt"
+#define POINT_SEPARATOR " | "
 
 class Grid{
     

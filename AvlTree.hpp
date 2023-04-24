@@ -217,14 +217,14 @@ private:
         return node;
     }
 
-    void to_vec_(AVLNode<T>* node, std::vector<AVLNode<T>*>* result)
+    void to_vec_(AVLNode<T>* node, std::vector<T*>* result)
     {
         if(node == nullptr)
             return;
 
         to_vec_(node->left_node_, result);
+        (*result).emplace_back(&node->key_);
         to_vec_(node->right_node_, result);
-        (*result).emplace_back(node);
     }
 
 public:
@@ -254,12 +254,65 @@ public:
         root_ = pop_(key, root_);
     }
 
-    std::vector<AVLNode<T>*> to_vec()
-    {
-        std::vector<AVLNode<T>*> result;
+    std::vector<T*> to_vec(){
+        std::vector<T*> result;
         to_vec_(root_, &result);
         return result;
     }
+
+    // // Complexity O(k + log(n))
+    // std::vector<T*> to_vec(AVLNode<T>* cell_node, long unsigned int k)
+    // {
+    //     // std::vector<AVLNode<T>*> result;
+    //     // to_vec_(root_, &result);
+    //     // return result;
+    //     // Initialize empty lists to store the k preceding and k next values
+    //     std::vector<T*> result;
+
+    //     // Start at the root of the tree
+    //     AVLNode<T>* current_node = root_;
+
+    //     // Traverse the tree to find the node with value p
+    //     while(current_node != nullptr && current_node != cell_node){
+    //         if(cell_node->key_ < current_node->key_)
+    //             current_node = current_node->left_node_;
+    //         else
+    //             current_node = current_node->right_node_;
+    //     }
+
+    //     // If the node with value p is not found in the tree, return empty lists
+    //     if(current_node == nullptr)
+    //         return result;
+
+    //     // Find the k preceding values by traversing the left subtree
+    //     AVLNode<T>* left_subtree = current_node->left_node_;
+    //     while(result.size() < k / 2 && left_subtree != nullptr){
+    //         // Traverse as far right as possible in the left subtree
+    //         while(left_subtree->right_node_ != nullptr){
+    //             left_subtree = left_subtree->right_node_;
+    //         }
+    //         // Add the value of the rightmost node in the subtree to the preceding values list
+    //         result.push_back(&left_subtree->key_);
+    //         // Move to the left subtree of the rightmost node
+    //         left_subtree = left_subtree->left_node_;
+    //     }
+
+    //     // Find the k next values by traversing the right subtree
+    //     AVLNode<T>* right_subtree = current_node->right_node_;
+    //     while(result.size() < k && right_subtree != nullptr){
+    //         // Traverse as far left as possible in the right subtree
+    //         while(right_subtree->left_node_ != nullptr){
+    //             right_subtree = right_subtree->left_node_;
+    //         }
+    //         // Add the value of the leftmost node in the subtree to the next values list
+    //         result.push_back(&right_subtree->key_);
+    //         // Move to the right subtree of the leftmost node
+    //         right_subtree = right_subtree->right_node_;
+    //     }
+
+    //     // Return the k preceding values and k next values
+    //     return result;
+    // }
 
 };
 

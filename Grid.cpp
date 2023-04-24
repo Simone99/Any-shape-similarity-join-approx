@@ -18,14 +18,14 @@ Grid::Grid(const Database& db, const Graph& g, const float eps, const float R){
 };
 
 void Grid::answer_query(const Graph& g){
-  for(AVLNode<Cell*>* solution : this->active_cells_tree.to_vec()){
-    this->update_mc(this->cells.get(**solution->get_key()), g, 0, [&](const std::vector<std::list<Cell*>>& cells_by_vertex){
+  for(Cell** solution : this->active_cells_tree.to_vec()){
+    this->update_mc(this->cells.get(**solution), g, 0, [&](const std::vector<std::list<Cell*>>& cells_by_vertex){
 
       auto report_all_points = [&](Cell** solution, int pos, Point** final_combination, std::ofstream& output_f, auto&& report_all_points){
         if(pos >= g.V){
           int i;
           for(i = 0; i < g.V - 1; i++){
-            output_f << *final_combination[i] << " - ";
+            output_f << *final_combination[i] << POINT_SEPARATOR;
           }
           output_f << *final_combination[i] << std::endl;
           return;
@@ -78,36 +78,74 @@ void Grid::update_mc(AVLNode<Cell>* cell_node, const Graph& g, int color, auto&&
   // Insert vertex into queue
   Q.push(color);
   // Take all available cells
-  std::vector<AVLNode<Cell>*> tree_vec = this->cells.to_vec();
+  std::vector<Cell*> tree_vec = this->cells.to_vec();
+  // Find cell_node in tree_vec using binary search
+  // int left = 0;
+  // int right = tree_vec.size() - 1;
+  // int center_node_i = left + (right - left) / 2;
+  // Cell* cell_node_key = cell_node->get_key();
+
+  // while (left <= right) {
+  //     int mid = left + (right - left) / 2;
+  //     if (tree_vec[mid] == cell_node_key) {
+  //         center_node_i = mid;
+  //         break;
+  //     } else if (*tree_vec[mid] < *cell_node_key) {
+  //         left = mid + 1;
+  //     } else {
+  //         right = mid - 1;
+  //     }
+  // }
+  // long unsigned int i;
   // Start BFS loop
   while (!Q.empty())
   {
     int v_j = Q.front();
     Q.pop();
-    for(Cell* cell_prime : cells_by_vertex[v_j]){
+    auto cell_prime = cells_by_vertex[v_j].begin();
+    while(cell_prime != cells_by_vertex[v_j].end()){
+      bool remove = false;
       for(int v_h : g.adj_list[v_j]){
         if(visited[v_h]){
           auto cell_bar = cells_by_vertex[v_h].begin();
           while(cell_bar != cells_by_vertex[v_h].end()){
-            if(cell_prime->distance_from(**cell_bar) > this->R){
+            if((*cell_prime)->distance_from(**cell_bar) > this->R){
               cell_bar = cells_by_vertex[v_h].erase(cell_bar);
             }else{
               cell_bar++;
             }
           }
-          if(cells_by_vertex[v_h].empty())
-            return;
+          if(cells_by_vertex[v_h].empty()){
+            remove = true;
+            break;
+          }
         }else{
           // If the vertex has not been visited
-          for(AVLNode<Cell>* c : tree_vec){
-            Cell* cell_bar = c->get_key();
-            if(*cell_bar != *cell_prime && cell_bar->m[v_h] > 0 && cell_prime->distance_from(*cell_bar) <= this->R){
+          // int left = center_node_i - pow(this->eps, -N_DIMENSIONS) / 2;
+          // long unsigned int right = center_node_i + pow(this->eps, -N_DIMENSIONS) / 2;
+          // for(i = (left < 0? 0 : left); i < (right > tree_vec.size()? tree_vec.size() : right); i++){
+          //   if(*tree_vec[i] != *cell_prime && tree_vec[i]->m[v_h] > 0 && cell_prime->distance_from(*tree_vec[i]) <= this->R){
+          //     cells_by_vertex[v_h].push_back(tree_vec[i]);
+          //   }
+          // }
+          for(Cell* cell_bar : tree_vec){
+            if(*cell_bar != **cell_prime && cell_bar->m[v_h] > 0 && (*cell_prime)->distance_from(*cell_bar) <= this->R){
               cells_by_vertex[v_h].push_back(cell_bar);
             }
+          }
+          if(cells_by_vertex[v_h].empty()){
+            remove = true;
+            break;
           }
           visited[v_h] = true;
           Q.push(v_h);
         }
+      }
+      if(remove){
+        cell_prime = cells_by_vertex[v_j].erase(cell_prime);
+        if(cells_by_vertex[v_j].empty()) return;
+      }else{
+        cell_prime++;
       }
     }
   }
@@ -136,6 +174,14 @@ void Grid::add_point(int color, const Point& p, const Graph& g){
   }
   cell_node->get_key()->points_set[color].emplace_back(p);
   cell_node->get_key()->m[color] += 1;
+
+  // Optimization
+  if(color == 0 && cell_node->get_key()->m[color] != 1){
+    Cell* tmp = cell_node->get_key();
+    tmp->m_c += tmp->m_c / (tmp->m[0] - 1);
+    return;
+  }
+
   this->update_mc(cell_node, g, color, [&](const std::vector<std::list<Cell*>>& cells_by_vertex){
     // Update m_c for all cells in cells_by_vertex[0]
     int n_solutions = 1;
@@ -177,6 +223,15 @@ void Grid::delete_point(Graph& g, int color, const Point& p){
   // If the point doesn't exist return
   if(i == cell_node_key->points_set[color].size())
     return;
+
+  // Optimization
+  if(color == 0 && cell_node_key->m[color] > 1){
+    cell_node_key->m_c -= cell_node_key->m_c / cell_node_key->m[0];
+    cell_node_key->m[0]--;
+    cell_node_key->points_set[0].erase(cell_node_key->points_set[color].begin() + i);
+    return;
+  }
+  
   //Update mc
   this->update_mc(cell_node, g, color, [&](const std::vector<std::list<Cell*>>& cells_by_vertex){
 
