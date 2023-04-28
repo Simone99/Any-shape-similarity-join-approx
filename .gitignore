@@ -8,6 +8,6 @@ Test_results.txt
 Test_results_50.txt
 Test_results_100.txt
 Test_results_1000.txt
-create_latex_entries.py
+create_latex_entries_plots.py
 Latex_table_body.txt
 plots

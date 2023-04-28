@@ -2,7 +2,6 @@
 #include <functional>
 #include <iostream>
 #include <fstream>
-#include <queue>
 #include <functional>
 
 Grid::Grid(const Database& db, const Graph& g, const float eps, const float R){
@@ -19,9 +18,9 @@ Grid::Grid(const Database& db, const Graph& g, const float eps, const float R){
 
 void Grid::answer_query(const Graph& g){
   for(Cell** solution : this->active_cells_tree.to_vec()){
-    this->update_mc(this->cells.get(**solution), g, 0, [&](const std::vector<std::list<Cell*>>& cells_by_vertex){
+    this->update_mc(this->cells.get(**solution), g, 0, [&](const std::vector<std::vector<Cell*>>& all_solutions){
 
-      auto report_all_points = [&](Cell** solution, int pos, Point** final_combination, std::ofstream& output_f, auto&& report_all_points){
+      auto report_all_points = [&](std::vector<Cell*>& solution, int pos, Point** final_combination, std::ofstream& output_f, auto&& report_all_points){
         if(pos >= g.V){
           int i;
           for(i = 0; i < g.V - 1; i++){
@@ -36,29 +35,71 @@ void Grid::answer_query(const Graph& g){
         }
       };
 
-      auto recursive_function = [&](const std::vector<std::list<Cell*>>& cells_by_vertex, int pos, Cell** solution, std::ofstream& output_f, auto&& recursive_function){
-        if(pos >= g.V){
-          Point **tmp = new Point*[g.V];
-          report_all_points(solution, 0, tmp, output_f, report_all_points);
-          delete[] tmp;
-          return;
-        }
-
-        for(Cell* c : cells_by_vertex[pos]){
-          solution[pos] = c;
-          recursive_function(cells_by_vertex, pos + 1, solution, output_f, recursive_function);
-        }
-      };
-
       std::ofstream output_file;
       output_file.open(QUERY_RESULT_OUTPUT_FILE, std::ios::out | std::ios::app);
-      Cell **tmp = new Cell*[g.V];
-      recursive_function(cells_by_vertex, 0, tmp, output_file, recursive_function);
-      delete[] tmp;
+      for(std::vector<Cell*> sol : all_solutions){
+        Point **tmp = new Point*[g.V];
+        report_all_points(sol, 0, tmp, output_file, report_all_points);
+        delete[] tmp;
+      }
       output_file.close();
     });
   }
 };
+
+void Grid::update_mc_recursive(std::queue<int> Q, const Graph& g, std::vector<bool>* visited, std::vector<std::list<Cell*>>* cells_by_vertex, std::vector<Cell*>& tree_vec, std::vector<Cell*>* solution, std::vector<std::vector<Cell*>>* all_solutions){
+  if(Q.empty()){
+    (*all_solutions).push_back(*solution);
+    return;
+  }
+  int v_j = Q.front();
+  Q.pop();
+  for(Cell* cell_prime : (*cells_by_vertex)[v_j]){
+    bool erase_neighbor_lists = false;
+    std::vector<int> non_visited_neighbor;
+    (*solution)[v_j] = cell_prime;
+    for(int v_h : g.adj_list[v_j]){
+      if((*visited)[v_h]){
+        if((*solution)[v_h] != nullptr){
+          if(cell_prime->distance_from(*(*solution)[v_h]) > this->R){
+            (*solution)[v_j] = nullptr;
+            erase_neighbor_lists = true;
+            break;
+          }
+        }
+      }else{
+        non_visited_neighbor.push_back(v_h);
+        for(Cell* cell_bar : tree_vec){
+          if(cell_bar->m[v_h] > 0 && cell_prime->distance_from(*cell_bar) <= this->R){
+            (*cells_by_vertex)[v_h].push_back(cell_bar);
+          }
+        }
+        if((*cells_by_vertex)[v_h].empty()){
+          (*solution)[v_j] = nullptr;
+          erase_neighbor_lists = true;
+          break;
+        }
+      }
+    }
+    if(erase_neighbor_lists){
+      for(int v_h : non_visited_neighbor){
+        (*cells_by_vertex)[v_h].clear();
+      }
+    }else{
+      for(int v_h : non_visited_neighbor){
+        (*visited)[v_h] = true;
+        Q.push(v_h);
+      }
+      update_mc_recursive(Q, g, visited, cells_by_vertex, tree_vec, solution, all_solutions);
+      for(int v_h : non_visited_neighbor){
+        (*visited)[v_h] = false;
+        Q.pop();
+        (*cells_by_vertex)[v_h].clear();
+      }
+      (*solution)[v_j] = nullptr;
+    }
+  }
+}
 
 void Grid::update_mc(AVLNode<Cell>* cell_node, const Graph& g, int color, auto&& lambda){
   // Queue for BFS
@@ -79,79 +120,18 @@ void Grid::update_mc(AVLNode<Cell>* cell_node, const Graph& g, int color, auto&&
   Q.push(color);
   // Take all available cells
   std::vector<Cell*> tree_vec = this->cells.to_vec();
-  // Find cell_node in tree_vec using binary search
-  // int left = 0;
-  // int right = tree_vec.size() - 1;
-  // int center_node_i = left + (right - left) / 2;
-  // Cell* cell_node_key = cell_node->get_key();
 
-  // while (left <= right) {
-  //     int mid = left + (right - left) / 2;
-  //     if (tree_vec[mid] == cell_node_key) {
-  //         center_node_i = mid;
-  //         break;
-  //     } else if (*tree_vec[mid] < *cell_node_key) {
-  //         left = mid + 1;
-  //     } else {
-  //         right = mid - 1;
-  //     }
-  // }
-  // long unsigned int i;
-  // Start BFS loop
-  while (!Q.empty())
-  {
-    int v_j = Q.front();
-    Q.pop();
-    auto cell_prime = cells_by_vertex[v_j].begin();
-    while(cell_prime != cells_by_vertex[v_j].end()){
-      bool remove = false;
-      for(int v_h : g.adj_list[v_j]){
-        if(visited[v_h]){
-          auto cell_bar = cells_by_vertex[v_h].begin();
-          while(cell_bar != cells_by_vertex[v_h].end()){
-            if((*cell_prime)->distance_from(**cell_bar) > this->R){
-              cell_bar = cells_by_vertex[v_h].erase(cell_bar);
-            }else{
-              cell_bar++;
-            }
-          }
-          if(cells_by_vertex[v_h].empty()){
-            remove = true;
-            break;
-          }
-        }else{
-          // If the vertex has not been visited
-          // int left = center_node_i - pow(this->eps, -N_DIMENSIONS) / 2;
-          // long unsigned int right = center_node_i + pow(this->eps, -N_DIMENSIONS) / 2;
-          // for(i = (left < 0? 0 : left); i < (right > tree_vec.size()? tree_vec.size() : right); i++){
-          //   if(*tree_vec[i] != *cell_prime && tree_vec[i]->m[v_h] > 0 && cell_prime->distance_from(*tree_vec[i]) <= this->R){
-          //     cells_by_vertex[v_h].push_back(tree_vec[i]);
-          //   }
-          // }
-          for(Cell* cell_bar : tree_vec){
-            if(*cell_bar != **cell_prime && cell_bar->m[v_h] > 0 && (*cell_prime)->distance_from(*cell_bar) <= this->R){
-              cells_by_vertex[v_h].push_back(cell_bar);
-            }
-          }
-          if(cells_by_vertex[v_h].empty()){
-            remove = true;
-            break;
-          }
-          visited[v_h] = true;
-          Q.push(v_h);
-        }
-      }
-      if(remove){
-        cell_prime = cells_by_vertex[v_j].erase(cell_prime);
-        if(cells_by_vertex[v_j].empty()) return;
-      }else{
-        cell_prime++;
-      }
-    }
+  std::vector<Cell*> solution;
+  for(int i = 0; i < g.V; i++){
+    solution.push_back(nullptr);
   }
-  // If solutions exists, run the lambda function
+  std::vector<std::vector<Cell*>> all_solutions;
 
-  lambda(cells_by_vertex);
+  update_mc_recursive(Q, g, &visited, &cells_by_vertex, tree_vec, &solution, &all_solutions);
+
+  // If solutions exists, run the lambda function
+  if(!all_solutions.empty())
+    lambda(all_solutions);
 
 };
 
@@ -182,17 +162,15 @@ void Grid::add_point(int color, const Point& p, const Graph& g){
     return;
   }
 
-  this->update_mc(cell_node, g, color, [&](const std::vector<std::list<Cell*>>& cells_by_vertex){
-    // Update m_c for all cells in cells_by_vertex[0]
-    int n_solutions = 1;
-    for(int i = 1; i < g.V; i++){
-      for(Cell* c : cells_by_vertex[i]){
-        n_solutions *= c->m[i];
+  this->update_mc(cell_node, g, color, [&](const std::vector<std::vector<Cell*>>& all_solutions){
+    // Update m_c for all cells in sol[0]
+    for(std::vector<Cell*> sol : all_solutions){
+      int n_solutions = 1;
+      for(int i = 1; i < g.V; i++){
+        n_solutions *= sol[i]->m[i];
       }
-    }
-    for(Cell* c1 : cells_by_vertex[0]){
-      c1->m_c = c1->m[0] * n_solutions;
-      this->active_cells_tree.insert(c1);
+      sol[0]->m_c += sol[0]->m[0] * n_solutions;
+      this->active_cells_tree.insert(sol[0]);
     }
   });
 };
@@ -233,23 +211,21 @@ void Grid::delete_point(Graph& g, int color, const Point& p){
   }
   
   //Update mc
-  this->update_mc(cell_node, g, color, [&](const std::vector<std::list<Cell*>>& cells_by_vertex){
+  this->update_mc(cell_node, g, color, [&](const std::vector<std::vector<Cell*>>& all_solutions){
 
     // Remove the element
     cell_node_key->points_set[color].erase(cell_node_key->points_set[color].begin() + i);
     cell_node_key->m[color]--;
 
     // Update m_c for all cells in cells_by_vertex[0]
-    int n_solutions = 1;
-    for(int i = 1; i < g.V; i++){
-      for(Cell* c : cells_by_vertex[i]){
-        n_solutions *= c->m[i];
+    for(std::vector<Cell*> sol : all_solutions){
+      int n_solutions = 1;
+      for(int i = 1; i < g.V; i++){
+        n_solutions *= sol[i]->m[i];
       }
-    }
-    for(Cell* c1 : cells_by_vertex[0]){
-      c1->m_c = c1->m[0] * n_solutions;
-      if(c1->m_c == 0){
-        this->active_cells_tree.pop(c1);
+      sol[0]->m_c += sol[0]->m[0] * n_solutions;
+      if(sol[0]->m_c == 0){
+        this->active_cells_tree.pop(sol[0]);
       }
     }
 
