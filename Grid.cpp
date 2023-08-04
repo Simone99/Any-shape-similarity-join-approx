@@ -4,6 +4,11 @@
 #include <fstream>
 #include <functional>
 
+Grid::Grid(){
+  this->eps = 0;
+  this->R = 0;
+};
+
 Grid::Grid(const Database& db, const Graph& g, const float eps, const float R){
     this->eps = eps;
     this->R = R;
@@ -141,7 +146,7 @@ void Grid::add_point(int color, const Point& p, const Graph& g){
       cell_coordinates.emplace_back(coordinate / this->eps);
   }
   Cell cell_tmp = {
-    coordinates: cell_coordinates
+    coordinates: cell_coordinates,
   };
   // Check if the cell already exists
   AVLNode<Cell>* cell_node = this->cells.get(cell_tmp);
@@ -149,6 +154,35 @@ void Grid::add_point(int color, const Point& p, const Graph& g){
       for(int i = 0; i < g.V; i++){
         cell_tmp.m.push_back(0);
       }
+      #if CELL_DISTANCE_METHOD == 1 || CELL_DISTANCE_METHOD == 2
+      // If we have to check the cell vertices for the distance
+      Point core_point;
+      for(int coordinate_i : cell_tmp.coordinates){
+          core_point.coordinates.push_back(coordinate_i * this->eps);
+      }
+      #endif
+      #if CELL_DISTANCE_METHOD == 1
+      
+      auto find_vertices = [&](std::vector<Point>* cell_vertices, Point* core_point, int i, int k, auto&& find_vertices){
+          if(i >= k){
+              (*cell_vertices).push_back(*core_point);
+              return;
+          }
+          (*core_point).coordinates[i] += this->eps;
+          find_vertices(cell_vertices, core_point, i + 1, k, find_vertices);
+          (*core_point).coordinates[i] -= this->eps;
+          find_vertices(cell_vertices, core_point, i + 1, k, find_vertices);
+      };
+      find_vertices(&cell_tmp.cell_vertices, &core_point, 0, cell_tmp.coordinates.size(), find_vertices);
+      #endif
+      #if CELL_DISTANCE_METHOD == 2
+      // If we have to check just the center
+      float incr = this->eps / 2;
+      for(float dim : core_point.coordinates){
+        cell_tmp.cell_center.coordinates.push_back(dim + incr);
+      }
+      cell_tmp.eps = this->eps;
+      #endif
       this->cells.insert(cell_tmp);
       cell_node = this->cells.get(cell_tmp);
   }

@@ -20,6 +20,7 @@ class Grid{
         void update_mc_recursive(std::queue<int> Q, const Graph& g, std::vector<bool>* visited, std::vector<std::list<Cell*>>* cells_by_vertex, std::vector<Cell*>& tree_vec, std::vector<Cell*>* solution, std::vector<std::vector<Cell*>>* all_solutions);
 
     public:
+        Grid();
         Grid(const Database& db, const Graph& g, const float eps, const float R);
         void answer_query(const Graph& g);
         void add_point(int color, const Point& p, const Graph& g);

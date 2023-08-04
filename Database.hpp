@@ -12,23 +12,57 @@
 #define N_DIMENSIONS 2
 #define GEO false // Used to process longitude and latitude coordinates
 
+/*
+
+    Used to switch among different metric distances
+    
+    0 - L1 metric
+    1 - Linf metric
+    2 - L2 metric
+
+*/
+#define POINT_DISTANCE_METRIC 2
+
 struct Point{
     std::vector<float> coordinates;
 
-    float euclidean_distance_from(const Point& other) const{
-        if(!GEO){
+    float distance_from(const Point& other) const{
+
+        #if POINT_DISTANCE_METRIC == 0
             float total_sum = 0.0;
             for(long unsigned int i = 0; i < this->coordinates.size(); i++){
-                total_sum += pow((this->coordinates[i] - other.coordinates[i]), 2);
+                total_sum += abs((this->coordinates[i] - other.coordinates[i]));
             }
-            return sqrt(total_sum);
-        }else{
+            return total_sum;
+        #endif
+
+        #if POINT_DISTANCE_METRIC == 1
+            float min_value = abs((this->coordinates[0] - other.coordinates[0]));
+            for(long unsigned int i = 1; i < this->coordinates.size(); i++){
+                float tmp_value = abs((this->coordinates[i] - other.coordinates[i]));
+                if(tmp_value < min_value)
+                    min_value = tmp_value;
+            }
+            return min_value;
+        #endif
+
+        #if POINT_DISTANCE_METRIC == 2
+
+        #if GEO
             float lat1 = this->coordinates[0] * M_PI / 180;
             float lat2 = other.coordinates[0] * M_PI / 180;
             float long1 = this->coordinates[1] * M_PI / 180;
             float long2 = other.coordinates[1] * M_PI / 180;
             return 2 * 6371 * asin(sqrt(pow(sin((lat2 - lat1)/2), 2) + cos(lat1) * cos(lat2) * pow(sin((long2 - long1) / 2), 2)));
-        }
+        #else
+            float total_sum = 0.0;
+            for(long unsigned int i = 0; i < this->coordinates.size(); i++){
+                total_sum += pow((this->coordinates[i] - other.coordinates[i]), 2);
+            }
+            return sqrt(total_sum);
+        #endif
+
+        #endif
     }
 
     friend std::ostream& operator<<(std::ostream& os, const Point& obj){
@@ -80,6 +114,7 @@ class Database{
         friend std::ostream& operator<<(std::ostream& os, const Database& obj);
         std::vector<Database> split_points(int percentage);
         Point generate_random_point(int d);
+        float get_spread();
 
 };
 

@@ -78,6 +78,27 @@ Point Database::generate_random_point(int d){
     return tmp_point;
 };
 
+float Database::get_spread(){
+    float min_distance = INT32_MAX, max_distance = 0;
+    std::vector<Point> tmp_points;
+    for(std::pair<int, std::vector<Point>> set : this->data){
+        for(const Point& p : set.second){
+            tmp_points.push_back(p);
+        }
+    }
+    for(long unsigned int i = 0; i < tmp_points.size() - 1; i++){
+        for(long unsigned int j = i + 1; j < tmp_points.size(); j++){
+            float distance = tmp_points[i].distance_from(tmp_points[j]);
+            if(distance > max_distance){
+                max_distance = distance;
+            }else if(distance < min_distance){
+                min_distance = distance;
+            }
+        }
+    }
+    return max_distance / min_distance;
+};
+
 std::ostream& operator<<(std::ostream& os, const Database& obj){
     for(const std::pair<int, std::vector<Point>> n : obj.data ){
         os << "Color: " << n.first << std::endl;
