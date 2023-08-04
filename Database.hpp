@@ -7,7 +7,7 @@
 #include <istream>
 #include <cmath>
 
-#define N_MAX_RECORDS 100
+#define N_MAX_RECORDS 10000
 #define MAX_RECORD_VALUE 10.0
 #define N_DIMENSIONS 2
 #define GEO false // Used to process longitude and latitude coordinates
@@ -25,6 +25,7 @@
 
 struct Point{
     std::vector<float> coordinates;
+    float weight;
 
     float distance_from(const Point& other) const{
 
@@ -72,6 +73,7 @@ struct Point{
             os << obj.coordinates[i] << ", ";
         }
         os << obj.coordinates[i] << ")";
+        os << " - " << obj.weight;
         return os;
     }
 
@@ -83,15 +85,19 @@ struct Point{
             is >> tmp;
             obj.coordinates.emplace_back(tmp);
             is >> tmp_char;
-            if(tmp_char == ')')
+            if(tmp_char == ')'){
+                is >> tmp_char;
+                is >> tmp_char;
+                is >> obj.weight;
                 break;
+            }
         }
         return is;
     }
 
     friend bool operator==(const Point& l, const Point& r)
     {
-        return std::tie(l.coordinates) == std::tie(r.coordinates); // keep the same order
+        return std::tie(l.coordinates) == std::tie(r.coordinates) && l.weight == r.weight; // keep the same order
     }
 
     friend bool operator!=(const Point& l, const Point& r)

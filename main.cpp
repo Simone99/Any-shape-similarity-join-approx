@@ -211,29 +211,29 @@ int main(){
             // Tests with different R
             std::cout << "Running tests with different Rs..." << std::endl;
             test_case(g, 1.5, 2, 0.1, output_file);
-            test_case(g, 1, 2, 0.1, output_file);
-            test_case(g, 0.5, 2, 0.1, output_file);
-            test_case(g, 2, 2, 0.1, output_file);
-            test_case(g, 4, 2, 0.1, output_file);
+            // test_case(g, 1, 2, 0.1, output_file);
+            // test_case(g, 0.5, 2, 0.1, output_file);
+            // test_case(g, 2, 2, 0.1, output_file);
+            // test_case(g, 4, 2, 0.1, output_file);
 
-            // Tests with different epsilon
-            std::cout << "Running tests with different epsilons..." << std::endl;
-            test_case(g, 1.5, 2, 0.1, output_file);
-            test_case(g, 1.5, 2, 0.35, output_file);
-            test_case(g, 1.5, 2, 0.065, output_file);
-            test_case(g, 1.5, 2, 1, output_file);
-            test_case(g, 1.5, 2, 0.01, output_file);
+            // // Tests with different epsilon
+            // std::cout << "Running tests with different epsilons..." << std::endl;
+            // test_case(g, 1.5, 2, 0.1, output_file);
+            // test_case(g, 1.5, 2, 0.35, output_file);
+            // test_case(g, 1.5, 2, 0.065, output_file);
+            // test_case(g, 1.5, 2, 1, output_file);
+            // test_case(g, 1.5, 2, 0.01, output_file);
 
-            // Tests with different dimensions
-            std::cout << "Running tests with different dimensions..." << std::endl;
-            remove("input_database.txt");
-            test_case(g, 1.5, 7, 0.1, output_file);
-            remove("input_database.txt");
-            test_case(g, 1.5, 3, 0.1, output_file);
-            remove("input_database.txt");
-            test_case(g, 1.5, 4, 0.1, output_file);
-            remove("input_database.txt");
-            test_case(g, 1.5, 2, 0.1, output_file);
+            // // Tests with different dimensions
+            // std::cout << "Running tests with different dimensions..." << std::endl;
+            // remove("input_database.txt");
+            // test_case(g, 1.5, 7, 0.1, output_file);
+            // remove("input_database.txt");
+            // test_case(g, 1.5, 3, 0.1, output_file);
+            // remove("input_database.txt");
+            // test_case(g, 1.5, 4, 0.1, output_file);
+            // remove("input_database.txt");
+            // test_case(g, 1.5, 2, 0.1, output_file);
         }else{
             if(GEO){
                 test_case_1(g, 5, 2, 0.01, 50, 5, output_file);

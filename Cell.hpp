@@ -2,7 +2,7 @@
 #define __CELL__
 
 #include <unordered_map>
-#include <vector>
+#include <list>
 #include <ostream>
 #include <iostream>
 #include <algorithm>
@@ -18,10 +18,15 @@
 #define CELL_DISTANCE_METHOD 2
 
 struct Cell{
-    std::unordered_map<int, std::vector<Point>> points_set;
+    // We use a list to support constant time insertion and deletion
+    // The list is going to be sorted
+    std::unordered_map<int, std::list<Point>> points_set;
     std::vector<int> m;
     int m_c;
     std::vector<int> coordinates;
+    std::vector<Cell*> highest_priority_cells;
+    float priority;
+
     #if CELL_DISTANCE_METHOD == 1
     // If we check all vertices
     std::vector<Point> cell_vertices;
@@ -39,7 +44,7 @@ struct Cell{
             for(const std::pair<int, std::vector<Point>> set_b : other.points_set){
                 for(Point a : set_a.second){
                     for(const Point& b : set_b.second){
-                        float distance = a.euclidean_distance_from(b);
+                        float distance = a.distance_from(b);
                         if(distance < min_distance)
                             min_distance = distance;
                     }
@@ -51,7 +56,7 @@ struct Cell{
         #if CELL_DISTANCE_METHOD == 1
         for(const Point& a : this->cell_vertices){
             for(const Point& b : other.cell_vertices){
-                float distance = a.euclidean_distance_from(b);
+                float distance = a.distance_from(b);
                 if(distance < min_distance)
                     min_distance = distance;
             }
@@ -61,11 +66,11 @@ struct Cell{
         #if CELL_DISTANCE_METHOD == 2
         #if POINT_DISTANCE_METRIC == 0
         // Somehow it doesn't work
-        min_distance = this->cell_center.euclidean_distance_from(other.cell_center) - this->eps;
+        min_distance = this->cell_center.distance_from(other.cell_center) - this->eps;
         #endif
         #if POINT_DISTANCE_METRIC == 1
         // Somehow it doesn't work
-        min_distance = this->cell_center.euclidean_distance_from(other.cell_center) - this->eps;
+        min_distance = this->cell_center.distance_from(other.cell_center) - this->eps;
         #endif
         #if POINT_DISTANCE_METRIC == 2
         min_distance = this->cell_center.distance_from(other.cell_center) - sqrt(cell_center.coordinates.size()) * this->eps;
@@ -77,7 +82,7 @@ struct Cell{
 
     friend bool operator<(const Cell& l, const Cell& r)
     {
-        return std::tie(l.coordinates) < std::tie(r.coordinates); // keep the same order
+        return l.priority < r.priority; // keep the same order
     }
     friend bool operator>(const Cell& l, const Cell& r)
     {
@@ -101,7 +106,7 @@ struct Cell{
     }
     friend std::ostream& operator<<(std::ostream& os, const Cell& obj){
         os << "Cell:" <<std::endl;
-        for(const std::pair<int, std::vector<Point>> n : obj.points_set ){
+        for(const std::pair<int, std::list<Point>> n : obj.points_set ){
             os << "Color " << n.first << std::endl;
             for(const Point& p : n.second){
                 os << p << std::endl;
