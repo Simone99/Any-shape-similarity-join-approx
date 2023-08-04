@@ -186,13 +186,13 @@ void Grid::add_point(int color, const Point& p, const Graph& g){
       this->cells.insert(cell_tmp);
       cell_node = this->cells.get(cell_tmp);
   }
-  cell_node->get_key()->points_set[color].emplace_back(p);
-  cell_node->get_key()->m[color] += 1;
+  Cell* cell_to_edit = cell_node->get_key();
+  cell_to_edit->points_set[color].emplace_back(p);
+  cell_to_edit->m[color] += 1;
 
   // Optimization
-  if(color == 0 && cell_node->get_key()->m[color] != 1){
-    Cell* tmp = cell_node->get_key();
-    tmp->m_c += tmp->m_c / (tmp->m[0] - 1);
+  if(color == 0 && cell_to_edit->m[color] != 1){
+    cell_to_edit->m_c += cell_to_edit->m_c / (cell_to_edit->m[0] - 1);
     return;
   }
 
