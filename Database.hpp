@@ -7,7 +7,7 @@
 #include <istream>
 #include <cmath>
 
-#define N_MAX_RECORDS 10000
+#define N_MAX_RECORDS 10
 #define MAX_RECORD_VALUE 10.0
 #define N_DIMENSIONS 2
 #define GEO false // Used to process longitude and latitude coordinates
@@ -86,7 +86,6 @@ struct Point{
             obj.coordinates.emplace_back(tmp);
             is >> tmp_char;
             if(tmp_char == ')'){
-                is >> tmp_char;
                 is >> tmp_char;
                 is >> obj.weight;
                 break;

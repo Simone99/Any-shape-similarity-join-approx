@@ -12,22 +12,32 @@ def pointStr_to_point(point_str):
     point_str = point_str.replace('(', '')
     point_str = point_str.replace(')', '')
     point_str = point_str.replace(' ', '')
+    weight = float(point_str.split('-')[1])
+    point_str = point_str.split('-')[0]
     coordinates = point_str.split(',')
     for coordinate in coordinates:
         result.append(float(coordinate))
-    return tuple(result)
+    return tuple(result), weight
 
 def draw_points(point_map, length):
     for i in range(length):
         point_map[i] = [*set(point_map[i])]
-        x = [point[0] for point in point_map[i]]
-        y = [point[1] for point in point_map[i]]
+        x = [point[0][0] for point in point_map[i]]
+        y = [point[0][1] for point in point_map[i]]
         plt.scatter(x, y, c=colors[i], vmin=0, vmax=10)
+        for p in point_map[i]:
+            label = "{:.2f}".format(p[1])
+            plt.annotate(label, # this is the text
+                    (p[0][0],p[0][1]), # these are the coordinates to position the label
+                    textcoords="offset points", # how to position the text
+                    xytext=(0,5), # distance from text to points (x,y)
+                    ha='center') # horizontal alignment can be left, right or center
+
 
 def draw_edges(points, edges):
     for edge in edges:
-        x = [points[edge[0]][0], points[edge[1]][0]]
-        y = [points[edge[0]][1], points[edge[1]][1]]
+        x = [points[edge[0]][0][0], points[edge[1]][0][0]]
+        y = [points[edge[0]][0][1], points[edge[1]][0][1]]
         plt.plot(x, y, color='#000000')
         
 

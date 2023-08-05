@@ -5,7 +5,7 @@
 #include <functional>
 
 auto comparison_function_for_heap = [](Cell* a, Cell* b){
-        return *a < *b;
+        return a->priority < b->priority;
     };
 
 Grid::Grid(){
@@ -36,6 +36,7 @@ void Grid::answer_query(const Graph& g){
   while(n_to_report > 0){
     // Report the highest shape
     Cell* sol = this->cells_heap.first();
+    if(sol == nullptr) break;
     int i;
     output_file << sol->points_set[0].front() << POINT_SEPARATOR;
     for(i = 0; i < g.V - 2; i++){
@@ -65,6 +66,7 @@ void Grid::answer_query(const Graph& g){
     //   }
     // });
   }
+  output_file.close();
 };
 
 void Grid::update_mc_recursive(std::queue<int> Q, const Graph& g, std::vector<bool>* visited, std::vector<std::list<Cell*>>* cells_by_vertex, std::vector<Cell*>& tree_vec, std::vector<Cell*>* solution, std::vector<std::vector<Cell*>>* all_solutions){

@@ -82,7 +82,7 @@ struct Cell{
 
     friend bool operator<(const Cell& l, const Cell& r)
     {
-        return l.priority < r.priority; // keep the same order
+        return std::tie(l.coordinates) < std::tie(r.coordinates); // keep the same order
     }
     friend bool operator>(const Cell& l, const Cell& r)
     {

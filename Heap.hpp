@@ -30,6 +30,7 @@ class Heap{
             std::push_heap(this->container.begin(), this->container.end(), this->comparison_function);
         };
         T first(){
+            if(this->container.empty()) return nullptr;
             return this->container[0];
         };
         void update_heap(){
