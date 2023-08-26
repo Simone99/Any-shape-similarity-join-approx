@@ -74,10 +74,6 @@ class Heap{
 
 struct HeapNode{
     std::vector<Cell*> cells;
-    // Heap used to store the indices of the points that lead to a solution with the priority stored within the node.
-    // It's used just in the reporting phase and it's reset at the end to just one solution containing all zeros.
-    Heap<std::vector<int>> solutions_heap;
-    std::unordered_set<std::vector<int>, hashFunction> indices_used;
     float priority;
 
     friend bool operator==(const HeapNode& l, const HeapNode& r){

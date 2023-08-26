@@ -25,7 +25,6 @@
 
 struct Point{
     std::vector<float> coordinates;
-    float weight;
 
     float distance_from(const Point& other) const{
 
@@ -73,7 +72,6 @@ struct Point{
             os << obj.coordinates[i] << ", ";
         }
         os << obj.coordinates[i] << ")";
-        os << " - " << obj.weight;
         return os;
     }
 
@@ -85,35 +83,14 @@ struct Point{
             is >> tmp;
             obj.coordinates.emplace_back(tmp);
             is >> tmp_char;
-            if(tmp_char == ')'){
-                is >> tmp_char;
-                is >> obj.weight;
-                break;
-            }
+            if(tmp_char == ')') break;
         }
         return is;
     }
 
-    friend bool operator<(const Point& l, const Point& r)
-    {
-        return l.weight < r.weight; // keep the same order
-    }
-    friend bool operator>(const Point& l, const Point& r)
-    {
-        return r < l; // keep the same order
-    }
-    friend bool operator<=(const Point& l, const Point& r)
-    {
-        return !(l > r); // keep the same order
-    }
-    friend bool operator>=(const Point& l, const Point& r)
-    {
-        return !(l < r); // keep the same order
-    }
-
     friend bool operator==(const Point& l, const Point& r)
     {
-        return std::tie(l.coordinates) == std::tie(r.coordinates) && l.weight == r.weight; // keep the same order
+        return std::tie(l.coordinates) == std::tie(r.coordinates); // keep the same order
     }
 
     friend bool operator!=(const Point& l, const Point& r)

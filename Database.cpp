@@ -75,7 +75,6 @@ Point Database::generate_random_point(int d){
     for(int k = 0; k < d; k++){
         tmp_point.coordinates.emplace_back(randomFloat());
     }
-    tmp_point.weight = randomFloat();
     return tmp_point;
 };
 

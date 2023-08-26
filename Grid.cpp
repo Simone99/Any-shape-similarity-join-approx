@@ -8,6 +8,8 @@ auto comparison_function_for_heap = [](HeapNode& a, HeapNode& b){
         return a.priority < b.priority;
     };
 
+auto priority_function = [](float distance, float R){return log10(R / distance);};
+
 // https://www.geeksforgeeks.org/binary-search/
 template<typename T>
 int binarySearch(T arr[], int l, int r, T x)
@@ -52,6 +54,23 @@ Grid::Grid(const Database& db, const Graph& g, const float eps, const float R){
 
 void Grid::answer_query(const Graph& g, unsigned int n_to_report){
 
+  auto report_all_points = [&](std::vector<Cell*>& solution, int pos, Point** final_combination, std::ofstream& output_f, auto&& report_all_points){
+    if(n_to_report <= 0) return;
+    if(pos >= g.V){
+      int i;
+      for(i = 0; i < g.V - 1; i++){
+        output_f << *final_combination[i] << POINT_SEPARATOR;
+      }
+      output_f << *final_combination[i] << std::endl;
+      n_to_report--;
+      return;
+    }
+    for(Point& p : solution[pos]->points_set[pos]){
+      final_combination[pos] = &p;
+      report_all_points(solution, pos + 1, final_combination, output_f, report_all_points);
+    }
+  };
+
   std::ofstream output_file;
   output_file.open(QUERY_RESULT_OUTPUT_FILE, std::ios::out | std::ios::app);
 
@@ -61,60 +80,20 @@ void Grid::answer_query(const Graph& g, unsigned int n_to_report){
     HeapNode* node = this->cells_heap.first();
     if(node == nullptr || node->priority == 0) break;
     std::vector<Cell*> sol = node->cells;
-    std::vector<int>* indices_ptr = node->solutions_heap.first();
-    if(indices_ptr == nullptr) break;
-    std::vector<int> indices = std::vector<int>(*indices_ptr);
-    node->solutions_heap.pop();
-    int i;
-    for(i = 0; i < g.V - 1; i++){
-      output_file << sol[i]->points_set[i][indices[i]] << POINT_SEPARATOR;
-    }
-    output_file << sol[i]->points_set[i][indices[i]] << std::endl;
 
-    // Time to update the indices
-
-    for(i = 0; i < g.V; i++){
-      std::vector<int> next_combination = std::vector<int>(indices);
-      next_combination[i] += 1;
-      if(next_combination[i] < (int)node->cells[i]->points_set[i].size() && !node->indices_used.contains(next_combination)){
-        node->solutions_heap.push(next_combination);
-        node->indices_used.insert(next_combination);
-      }
-    }
+    Point **tmp = new Point*[g.V];
+    report_all_points(sol, 0, tmp, output_file, report_all_points);
+    delete[] tmp;
 
     // Time to update heapnode priority
-
-    std::vector<int>* next_priority_indices = node->solutions_heap.first();
-    if(next_priority_indices == nullptr){
-      node->priority = 0;
-    }else{
-      float next_priority = 0;
-      for(i = 0; i < g.V; i++){
-        next_priority += node->cells[i]->points_set[i][(*next_priority_indices)[i]].weight;
-      }
-      node->priority = next_priority;
-    }
-
+    node->priority = 0;
     this->cells_heap.update_heap();
-
-    n_to_report--;
   }
   output_file.close();
 
   // Time to reset all data structures to be ready to answer another query
   for(HeapNode& hn : *(this->cells_heap.get_container())){
-    hn.indices_used.clear();
-    (*hn.solutions_heap.get_container()).clear();
-    std::vector<int> reset_value;
-    float node_priority = 0;
-    for(int i = 0; i < g.V; i++){
-      reset_value.push_back(0);
-      if(!hn.cells[i]->points_set[i].empty())
-        node_priority += hn.cells[i]->points_set[i][0].weight;
-    }
-    hn.indices_used.insert(reset_value);
-    hn.solutions_heap.push(reset_value);
-    hn.priority = node_priority;
+    hn.priority = get_priority(hn.cells, g, priority_function);
   }
 
   this->cells_heap.update_heap();
@@ -143,7 +122,7 @@ void Grid::update_priority_recursive(std::queue<int> Q, const Graph& g, std::vec
       }else{
         non_visited_neighbor.push_back(v_h);
         for(Cell* cell_bar : tree_vec){
-          if(cell_bar->m[v_h] > 0 && cell_prime->distance_from(*cell_bar) <= this->R){
+          if(cell_bar->points_set[v_h].size() > 0 && cell_prime->distance_from(*cell_bar) <= this->R){
             (*cells_by_vertex)[v_h].push_back(cell_bar);
           }
         }
@@ -208,6 +187,35 @@ void Grid::update_priority(AVLNode<Cell>* cell_node, const Graph& g, int color, 
 
 };
 
+float Grid::get_priority(std::vector<Cell*>& sol, const Graph& g, auto&& priority_function){
+  // Queue for BFS
+  std::queue<int> Q;
+  // Initialize bool vector for keeping track of visited nodes
+  std::vector<bool> visited;
+  for(int i = 0; i < g.V; i++){
+      visited.push_back(false);
+  }
+  visited[0] = true;
+  // Insert vertex into queue
+  Q.push(0);
+  // Initialize variables
+  float result = 0;
+  // Start BFS loop
+  while (!Q.empty())
+  {
+      int v_j = Q.front();
+      Q.pop();
+      for(int v_h : g.adj_list[v_j]){
+          if(!visited[v_h]){
+              visited[v_h] = true;
+              Q.push(v_h);
+          }
+          result += priority_function(sol[v_j]->distance_from(*sol[v_h]), this->R);
+      }
+  }
+  return result;
+};
+
 void Grid::add_point(int color, const Point& p, const Graph& g){
   std::vector<int> cell_coordinates;
   for(const float coordinate : p.coordinates){
@@ -219,9 +227,7 @@ void Grid::add_point(int color, const Point& p, const Graph& g){
   // Check if the cell already exists
   AVLNode<Cell>* cell_node = this->cells.get(cell_tmp);
   if(cell_node == nullptr){
-      for(int i = 0; i < g.V; i++){
-        cell_tmp.m.push_back(0);
-      }
+
       #if CELL_DISTANCE_METHOD == 1 || CELL_DISTANCE_METHOD == 2
       // If we have to check the cell vertices for the distance
       Point core_point;
@@ -254,42 +260,21 @@ void Grid::add_point(int color, const Point& p, const Graph& g){
       this->cells.insert(cell_tmp);
       cell_node = this->cells.get(cell_tmp);
   }
-  // Sorted insertion
+  // Normal insertion
   Cell* cell_to_edit = cell_node->get_key();
-  cell_to_edit->points_set[color].insert(std::upper_bound(cell_to_edit->points_set[color].begin(), cell_to_edit->points_set[color].end(), p, [](const Point a, const Point b){return a > b;}), p);
-  cell_to_edit->m[color] += 1;
+  cell_to_edit->points_set[color].push_back(p);
 
   this->update_priority(cell_node, g, color, [&](const std::vector<std::vector<Cell*>>& all_solutions){
     // Update m_c for all cells in sol[0] and their priority in the heap
     for(std::vector<Cell*> sol : all_solutions){
-      float priority = 0;
-      for(int i = 1; i < g.V; i++){
-        priority += sol[i]->points_set[i].front().weight;
-      }
-      priority += sol[0]->points_set[0].front().weight;
+      float priority = this->get_priority(sol, g, priority_function);
       // Look for the solution inside the heap
       HeapNode* node = this->cells_heap.search_element(HeapNode{cells: sol});
       if(node != nullptr){
         node->priority = priority;
         this->cells_heap.update_heap();
       }else{
-        std::vector<int> tmp;
-        for(int i = 0; i < g.V; i++){
-          tmp.push_back(0);
-        }
-        HeapNode tmp_heapnode = HeapNode{cells: sol, priority: priority};
-        tmp_heapnode.solutions_heap.set_comparison_function([&tmp_heapnode](std::vector<int>& a, std::vector<int> b){
-          float priority_a = 0, priority_b = 0;
-          int i, end_i = a.size();
-          for(i = 0; i < end_i; i++){
-            priority_a += tmp_heapnode.cells[i]->points_set[i][a[i]].weight;
-            priority_b += tmp_heapnode.cells[i]->points_set[i][b[i]].weight;
-          }
-          return priority_a < priority_b;
-        });
-        tmp_heapnode.solutions_heap.push(tmp);
-        tmp_heapnode.indices_used.insert(tmp);
-        this->cells_heap.push(tmp_heapnode);
+        this->cells_heap.push(HeapNode{cells: sol, priority: priority});
       }
     }
   });
@@ -312,9 +297,14 @@ void Grid::delete_point(const Graph& g, int color, const Point& p){
   if(!cell_node_key->points_set.contains(color))
     return;
   // Look for the element to delete
-  int i = binarySearch<Point>(cell_node_key->points_set[color].data(), 0, cell_node_key->points_set[color].size() - 1, p);
+  long unsigned int i = 0;
+  for(i = 0; i < cell_node_key->points_set[color].size(); i++){
+    if(cell_node_key->points_set[color][i] == p){
+      break;
+    }
+  }
   // If the point doesn't exist return
-  if(i == -1)
+  if(i == cell_node_key->points_set[color].size())
     return;
   
   //Update priority
@@ -322,7 +312,6 @@ void Grid::delete_point(const Graph& g, int color, const Point& p){
 
     // Remove the element
     cell_node_key->points_set[color].erase(cell_node_key->points_set[color].begin() + i);
-    cell_node_key->m[color]--;
 
     // Update priority
 
@@ -345,15 +334,14 @@ void Grid::delete_point(const Graph& g, int color, const Point& p){
         if(node != nullptr){
           if(empty){
             node->priority = 0;
+            this->cells_heap.update_heap();
           }else{
             // Check if the deleted point was the last stored in the corresponding relation
             if(cell_node_key->points_set[color].size() == 0){
               node->priority = 0;
-            }else{
-              node->priority = node->priority - p.weight + cell_node_key->points_set[color][0].weight;
+              this->cells_heap.update_heap();
             }
           }
-          this->cells_heap.update_heap();
         }
       }
 

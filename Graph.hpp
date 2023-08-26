@@ -11,7 +11,6 @@ class Graph{
 
         int V, E;
         std::list<int> *adj_list;
-        //std::vector<GraphNode> vertices;
         Graph(std::ifstream& input_file);
         ~Graph();
         
