@@ -4,9 +4,33 @@
 #include <fstream>
 #include <functional>
 
-auto comparison_function_for_heap = [](Cell* a, Cell* b){
-        return a->priority < b->priority;
+auto comparison_function_for_heap = [](HeapNode& a, HeapNode& b){
+        return a.priority < b.priority;
     };
+
+// https://www.geeksforgeeks.org/binary-search/
+template<typename T>
+int binarySearch(T arr[], int l, int r, T x)
+{
+    while (l <= r) {
+        int m = l + (r - l) / 2;
+ 
+        // Check if x is present at mid
+        if (arr[m] == x)
+            return m;
+ 
+        // If x smaller, ignore left half
+        if (arr[m] > x)
+            l = m + 1;
+ 
+        // If x is greater, ignore right half
+        else
+            r = m - 1;
+    }
+ 
+    // If we reach here, then element was not present
+    return -1;
+};
 
 Grid::Grid(){
   this->eps = 0;
@@ -19,57 +43,84 @@ Grid::Grid(const Database& db, const Graph& g, const float eps, const float R){
     this->R = R;
     this->cells_heap.set_comparison_function(comparison_function_for_heap);
     // Create all the cell looping on all the points
-    const std::unordered_map<int, std::vector<Point>>& data = db.getData();
-    for(const std::pair<int, std::vector<Point>> n : data ){
+    for(const std::pair<int, std::vector<Point>> n : db.getData() ){
         for(const Point& p : n.second){
           this->add_point(n.first, p, g);
         }
     }
 };
 
-void Grid::answer_query(const Graph& g){
+void Grid::answer_query(const Graph& g, unsigned int n_to_report){
 
   std::ofstream output_file;
   output_file.open(QUERY_RESULT_OUTPUT_FILE, std::ios::out | std::ios::app);
 
-  int n_to_report = 1;
   while(n_to_report > 0){
+
     // Report the highest shape
-    Cell* sol = this->cells_heap.first();
-    if(sol == nullptr) break;
+    HeapNode* node = this->cells_heap.first();
+    if(node == nullptr || node->priority == 0) break;
+    std::vector<Cell*> sol = node->cells;
+    std::vector<int>* indices_ptr = node->solutions_heap.first();
+    if(indices_ptr == nullptr) break;
+    std::vector<int> indices = std::vector<int>(*indices_ptr);
+    node->solutions_heap.pop();
     int i;
-    output_file << sol->points_set[0].front() << POINT_SEPARATOR;
-    for(i = 0; i < g.V - 2; i++){
-      output_file << sol->highest_priority_cells[i]->points_set[i + 1].front() << POINT_SEPARATOR;
+    for(i = 0; i < g.V - 1; i++){
+      output_file << sol[i]->points_set[i][indices[i]] << POINT_SEPARATOR;
     }
-    output_file << sol->highest_priority_cells[i]->points_set[i + 1].front() << std::endl;
+    output_file << sol[i]->points_set[i][indices[i]] << std::endl;
+
+    // Time to update the indices
+
+    for(i = 0; i < g.V; i++){
+      std::vector<int> next_combination = std::vector<int>(indices);
+      next_combination[i] += 1;
+      if(next_combination[i] < (int)node->cells[i]->points_set[i].size() && !node->indices_used.contains(next_combination)){
+        node->solutions_heap.push(next_combination);
+        node->indices_used.insert(next_combination);
+      }
+    }
+
+    // Time to update heapnode priority
+
+    std::vector<int>* next_priority_indices = node->solutions_heap.first();
+    if(next_priority_indices == nullptr){
+      node->priority = 0;
+    }else{
+      float next_priority = 0;
+      for(i = 0; i < g.V; i++){
+        next_priority += node->cells[i]->points_set[i][(*next_priority_indices)[i]].weight;
+      }
+      node->priority = next_priority;
+    }
+
+    this->cells_heap.update_heap();
 
     n_to_report--;
-
-    // // Calculate the new priority for the current set of cells
-    // float current_priority = 0;
-
-    // // I look for all the other cells
-    // this->update_mc(this->cells.get(*sol), g, 0, [&](const std::vector<std::vector<Cell*>>& all_solutions){
-    //   for(std::vector<Cell*> solution : all_solutions){
-    //     float priority = 0;
-    //     for(int i = 1; i < g.V; i++){
-    //       priority += solution[i]->points_set[i].front().weight;
-    //     }
-    //     if(sol->priority == (priority + solution[0]->points_set[0].front().weight)){
-    //       int i;
-    //       for(i = 0; i < g.V - 1; i++){
-    //         output_file << solution[i]->points_set[i].front() << POINT_SEPARATOR;
-    //       }
-    //       output_file << solution[i]->points_set[i].front() << std::endl;
-    //     }
-    //   }
-    // });
   }
   output_file.close();
+
+  // Time to reset all data structures to be ready to answer another query
+  for(HeapNode& hn : *(this->cells_heap.get_container())){
+    hn.indices_used.clear();
+    (*hn.solutions_heap.get_container()).clear();
+    std::vector<int> reset_value;
+    float node_priority = 0;
+    for(int i = 0; i < g.V; i++){
+      reset_value.push_back(0);
+      if(!hn.cells[i]->points_set[i].empty())
+        node_priority += hn.cells[i]->points_set[i][0].weight;
+    }
+    hn.indices_used.insert(reset_value);
+    hn.solutions_heap.push(reset_value);
+    hn.priority = node_priority;
+  }
+
+  this->cells_heap.update_heap();
 };
 
-void Grid::update_mc_recursive(std::queue<int> Q, const Graph& g, std::vector<bool>* visited, std::vector<std::list<Cell*>>* cells_by_vertex, std::vector<Cell*>& tree_vec, std::vector<Cell*>* solution, std::vector<std::vector<Cell*>>* all_solutions){
+void Grid::update_priority_recursive(std::queue<int> Q, const Graph& g, std::vector<bool>* visited, std::vector<std::list<Cell*>>* cells_by_vertex, std::vector<Cell*>& tree_vec, std::vector<Cell*>* solution, std::vector<std::vector<Cell*>>* all_solutions){
   if(Q.empty()){
     (*all_solutions).push_back(*solution);
     return;
@@ -112,7 +163,7 @@ void Grid::update_mc_recursive(std::queue<int> Q, const Graph& g, std::vector<bo
         (*visited)[v_h] = true;
         Q.push(v_h);
       }
-      update_mc_recursive(Q, g, visited, cells_by_vertex, tree_vec, solution, all_solutions);
+      update_priority_recursive(Q, g, visited, cells_by_vertex, tree_vec, solution, all_solutions);
       for(int v_h : non_visited_neighbor){
         (*visited)[v_h] = false;
         Q.pop();
@@ -123,7 +174,7 @@ void Grid::update_mc_recursive(std::queue<int> Q, const Graph& g, std::vector<bo
   }
 }
 
-void Grid::update_mc(AVLNode<Cell>* cell_node, const Graph& g, int color, auto&& lambda){
+void Grid::update_priority(AVLNode<Cell>* cell_node, const Graph& g, int color, auto&& lambda){
   // Queue for BFS
   std::queue<int> Q;
   // Initialize bool vector for keeping track of visited nodes
@@ -149,7 +200,7 @@ void Grid::update_mc(AVLNode<Cell>* cell_node, const Graph& g, int color, auto&&
   }
   std::vector<std::vector<Cell*>> all_solutions;
 
-  update_mc_recursive(Q, g, &visited, &cells_by_vertex, tree_vec, &solution, &all_solutions);
+  update_priority_recursive(Q, g, &visited, &cells_by_vertex, tree_vec, &solution, &all_solutions);
 
   // If solutions exists, run the lambda function
   if(!all_solutions.empty())
@@ -205,50 +256,46 @@ void Grid::add_point(int color, const Point& p, const Graph& g){
   }
   // Sorted insertion
   Cell* cell_to_edit = cell_node->get_key();
-  auto it = cell_to_edit->points_set[color].begin();
-  for(; it != cell_to_edit->points_set[color].end() && it->weight >= p.weight; it++);
-  cell_to_edit->points_set[color].insert(it, p);
+  cell_to_edit->points_set[color].insert(std::upper_bound(cell_to_edit->points_set[color].begin(), cell_to_edit->points_set[color].end(), p, [](const Point a, const Point b){return a > b;}), p);
   cell_to_edit->m[color] += 1;
 
-  // Optimization
-  if(color == 0 && cell_to_edit->m[color] != 1){
-    cell_to_edit->m_c += cell_to_edit->m_c / (cell_to_edit->m[0] - 1);
-    return;
-  }
-
-  this->update_mc(cell_node, g, color, [&](const std::vector<std::vector<Cell*>>& all_solutions){
+  this->update_priority(cell_node, g, color, [&](const std::vector<std::vector<Cell*>>& all_solutions){
     // Update m_c for all cells in sol[0] and their priority in the heap
     for(std::vector<Cell*> sol : all_solutions){
-      int n_solutions = 1;
       float priority = 0;
       for(int i = 1; i < g.V; i++){
-        n_solutions *= sol[i]->m[i];
         priority += sol[i]->points_set[i].front().weight;
       }
-      sol[0]->m_c += sol[0]->m[0] * n_solutions;
-      // Check whether or not the cell was already in the heap
-      if(sol[0]->priority == 0){
-        sol[0]->priority = priority + sol[0]->points_set[0].front().weight;
-        for(int i = 1; i < g.V; i++){
-          sol[0]->highest_priority_cells.push_back(sol[i]);
-        }
-        this->cells_heap.push(sol[0]);
+      priority += sol[0]->points_set[0].front().weight;
+      // Look for the solution inside the heap
+      HeapNode* node = this->cells_heap.search_element(HeapNode{cells: sol});
+      if(node != nullptr){
+        node->priority = priority;
+        this->cells_heap.update_heap();
       }else{
-        if(sol[0]->priority < (priority + sol[0]->points_set[0].front().weight)){
-          sol[0]->priority = priority + sol[0]->points_set[0].front().weight;
-          for(int i = 1; i < g.V; i++){
-            sol[0]->highest_priority_cells[i - 1] = sol[i];
-          }
-          this->cells_heap.update_heap();
+        std::vector<int> tmp;
+        for(int i = 0; i < g.V; i++){
+          tmp.push_back(0);
         }
+        HeapNode tmp_heapnode = HeapNode{cells: sol, priority: priority};
+        tmp_heapnode.solutions_heap.set_comparison_function([&tmp_heapnode](std::vector<int>& a, std::vector<int> b){
+          float priority_a = 0, priority_b = 0;
+          int i, end_i = a.size();
+          for(i = 0; i < end_i; i++){
+            priority_a += tmp_heapnode.cells[i]->points_set[i][a[i]].weight;
+            priority_b += tmp_heapnode.cells[i]->points_set[i][b[i]].weight;
+          }
+          return priority_a < priority_b;
+        });
+        tmp_heapnode.solutions_heap.push(tmp);
+        tmp_heapnode.indices_used.insert(tmp);
+        this->cells_heap.push(tmp_heapnode);
       }
     }
   });
 };
 
-// Fix later the function
-
-/*void Grid::delete_point(Graph& g, int color, const Point& p){
+void Grid::delete_point(const Graph& g, int color, const Point& p){
   std::vector<int> cell_coordinates;
   for(const float coordinate : p.coordinates){
       cell_coordinates.emplace_back(coordinate / this->eps);
@@ -262,58 +309,58 @@ void Grid::add_point(int color, const Point& p, const Graph& g){
     return;
   // Check if the color exists
   Cell* cell_node_key = cell_node->get_key();
-  if(cell_node_key->points_set.count(color) <= 0)
+  if(!cell_node_key->points_set.contains(color))
     return;
   // Look for the element to delete
-  long unsigned int i = 0;
-  for(i = 0; i < cell_node_key->points_set[color].size(); i++){
-    if(cell_node_key->points_set[color][i] == p){
-      break;
-    }
-  }
+  int i = binarySearch<Point>(cell_node_key->points_set[color].data(), 0, cell_node_key->points_set[color].size() - 1, p);
   // If the point doesn't exist return
-  if(i == cell_node_key->points_set[color].size())
+  if(i == -1)
     return;
-
-  // Optimization
-  if(color == 0 && cell_node_key->m[color] > 1){
-    cell_node_key->m_c -= cell_node_key->m_c / cell_node_key->m[0];
-    cell_node_key->m[0]--;
-    cell_node_key->points_set[0].erase(cell_node_key->points_set[color].begin() + i);
-    return;
-  }
   
-  //Update mc
-  this->update_mc(cell_node, g, color, [&](const std::vector<std::vector<Cell*>>& all_solutions){
+  //Update priority
+  this->update_priority(cell_node, g, color, [&](const std::vector<std::vector<Cell*>>& all_solutions){
 
     // Remove the element
     cell_node_key->points_set[color].erase(cell_node_key->points_set[color].begin() + i);
     cell_node_key->m[color]--;
 
-    // Update m_c for all cells in cells_by_vertex[0]
-    for(std::vector<Cell*> sol : all_solutions){
-      int n_solutions = 1;
-      for(int i = 1; i < g.V; i++){
-        n_solutions *= sol[i]->m[i];
-      }
-      sol[0]->m_c += sol[0]->m[0] * n_solutions;
-      if(sol[0]->m_c == 0){
-        this->active_cells_tree.pop(sol[0]);
-      }
-    }
+    // Update priority
 
-    // Handle the case in which the cell is empty
-    // Check if the cell is now empty
-    bool empty = true;
-    for(const std::pair<int, std::vector<Point>> n : cell_node_key->points_set){
-      if(n.second.size() > 0){
-        empty = false;
-        break;
+    if(i == 0){
+      // This is the only case i which the cell could be empty, because if we delete a point in another section of the vector
+      // for sure we have other elements stored in the vector, so the cell is not empty.
+      // Check if the cell is now empty
+      bool empty = true;
+      for(const std::pair<int, std::vector<Point>> n : cell_node_key->points_set){
+        if(n.second.size() > 0){
+          empty = false;
+          break;
+        }
       }
-    }
-    // If empty delete it first from the active cell tree and then from the non-empty cells tree
-    if(empty){
-      this->cells.pop(*cell_node_key);
+
+      // If it was the first element we need to actually change the priority in the corresponding heap node
+      for(std::vector<Cell*> sol : all_solutions){
+        // Look for the solution inside the heap
+        HeapNode* node = this->cells_heap.search_element(HeapNode{cells: sol});
+        if(node != nullptr){
+          if(empty){
+            node->priority = 0;
+          }else{
+            // Check if the deleted point was the last stored in the corresponding relation
+            if(cell_node_key->points_set[color].size() == 0){
+              node->priority = 0;
+            }else{
+              node->priority = node->priority - p.weight + cell_node_key->points_set[color][0].weight;
+            }
+          }
+          this->cells_heap.update_heap();
+        }
+      }
+
+      // I don't actually delete the cell, because I keep pointers in the heap, so I store empty cells too
+      // if(empty){
+      //   this->cells.pop(*cell_node_key);
+      // }
     }
   });
-};*/
+};

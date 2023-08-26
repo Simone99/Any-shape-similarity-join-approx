@@ -7,7 +7,7 @@
 #include <istream>
 #include <cmath>
 
-#define N_MAX_RECORDS 10
+#define N_MAX_RECORDS 100
 #define MAX_RECORD_VALUE 10.0
 #define N_DIMENSIONS 2
 #define GEO false // Used to process longitude and latitude coordinates
@@ -94,6 +94,23 @@ struct Point{
         return is;
     }
 
+    friend bool operator<(const Point& l, const Point& r)
+    {
+        return l.weight < r.weight; // keep the same order
+    }
+    friend bool operator>(const Point& l, const Point& r)
+    {
+        return r < l; // keep the same order
+    }
+    friend bool operator<=(const Point& l, const Point& r)
+    {
+        return !(l > r); // keep the same order
+    }
+    friend bool operator>=(const Point& l, const Point& r)
+    {
+        return !(l < r); // keep the same order
+    }
+
     friend bool operator==(const Point& l, const Point& r)
     {
         return std::tie(l.coordinates) == std::tie(r.coordinates) && l.weight == r.weight; // keep the same order
@@ -103,6 +120,7 @@ struct Point{
     {
         return !(l == r); // keep the same order
     }
+
 };
 
 class Database{

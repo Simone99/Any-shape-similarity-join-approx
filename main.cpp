@@ -90,7 +90,7 @@ std::vector<unsigned long int> check_real_approx(Graph& g, float R){
     return std::vector<unsigned long int> {real_shapes, approx_shapes};
 }
 
-void test_case(Graph& g, float R, int n_dimensions, float eps, std::ofstream& out){
+void test_case(Graph& g, float R, int n_dimensions, float eps, unsigned int n_to_report, std::ofstream& out){
     out << "Test case R(" << R <<"), d(" << n_dimensions << "), eps(" << eps << ")\n";
     Database db(g.V, n_dimensions);
 
@@ -103,7 +103,7 @@ void test_case(Graph& g, float R, int n_dimensions, float eps, std::ofstream& ou
     std::cout << "Answering query..." << std::endl;
     remove(QUERY_RESULT_OUTPUT_FILE);
     begin = std::chrono::high_resolution_clock::now();
-    gd.answer_query(g);
+    gd.answer_query(g, n_to_report);
     end = std::chrono::high_resolution_clock::now();
     out << "Time to answer the query = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() / 1000.0 << "s" << std::endl;
 
@@ -113,7 +113,7 @@ void test_case(Graph& g, float R, int n_dimensions, float eps, std::ofstream& ou
     out << "Approximation ratio = " << (1.0 + (real_approx[0] != 0? real_approx[1] / (double)real_approx[0] : 0.0)) << std::endl;
 }
 
-void test_case_1(Graph& g, float R, int n_dimensions, float eps, int initialization_percentage, int percentage_to_split, std::ofstream& out){
+void test_case_1(Graph& g, float R, int n_dimensions, float eps, int initialization_percentage, int percentage_to_split, unsigned int n_to_report, std::ofstream& out){
     out << "Test case R(" << R <<"), d(" << n_dimensions << "), eps(" << eps << "), init_percentage(" << initialization_percentage << "), percentage_to_split(" << percentage_to_split << ")\n";
     Database db(g.V, n_dimensions);
 
@@ -148,7 +148,7 @@ void test_case_1(Graph& g, float R, int n_dimensions, float eps, int initializat
         std::cout << "Answering query..." << std::endl;
         remove(QUERY_RESULT_OUTPUT_FILE);
         begin = std::chrono::high_resolution_clock::now();
-        gd.answer_query(g);
+        gd.answer_query(g, n_to_report);
         end = std::chrono::high_resolution_clock::now();
         query_times.push_back(std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() / 1000.0);
 
@@ -177,7 +177,7 @@ void test_case_1(Graph& g, float R, int n_dimensions, float eps, int initializat
 
 }
 
-void test_case_3(Grid* grids, Graph& g, std::vector<float>& rs, float radius, int end_i){
+void test_case_3(Grid* grids, Graph& g, std::vector<float>& rs, float radius, unsigned int n_to_report, int end_i){
     int l = 0, r = end_i;
     while (l <= r) {
         int m = l + (r - l) / 2;
@@ -193,7 +193,7 @@ void test_case_3(Grid* grids, Graph& g, std::vector<float>& rs, float radius, in
 
     std::cout << "Answering query with radius: " << rs[r] << std::endl;
     std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-    grids[r].answer_query(g);
+    grids[r].answer_query(g, n_to_report);
     std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
     std::cout << "Time to answer the query: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() / 1000.0 << "s" << std::endl;
 }
@@ -209,36 +209,13 @@ int main(){
     if(!VARIABLE_R){
         if(TEST_CASE_SWITCH){
             // Tests with different R
-            std::cout << "Running tests with different Rs..." << std::endl;
-            test_case(g, 1.5, 2, 0.1, output_file);
-            // test_case(g, 1, 2, 0.1, output_file);
-            // test_case(g, 0.5, 2, 0.1, output_file);
-            // test_case(g, 2, 2, 0.1, output_file);
-            // test_case(g, 4, 2, 0.1, output_file);
-
-            // // Tests with different epsilon
-            // std::cout << "Running tests with different epsilons..." << std::endl;
-            // test_case(g, 1.5, 2, 0.1, output_file);
-            // test_case(g, 1.5, 2, 0.35, output_file);
-            // test_case(g, 1.5, 2, 0.065, output_file);
-            // test_case(g, 1.5, 2, 1, output_file);
-            // test_case(g, 1.5, 2, 0.01, output_file);
-
-            // // Tests with different dimensions
-            // std::cout << "Running tests with different dimensions..." << std::endl;
-            // remove("input_database.txt");
-            // test_case(g, 1.5, 7, 0.1, output_file);
-            // remove("input_database.txt");
-            // test_case(g, 1.5, 3, 0.1, output_file);
-            // remove("input_database.txt");
-            // test_case(g, 1.5, 4, 0.1, output_file);
-            // remove("input_database.txt");
-            // test_case(g, 1.5, 2, 0.1, output_file);
+            std::cout << "Running tests with different k..." << std::endl;
+            test_case(g, 1.5, 2, 0.1, 10, output_file);
         }else{
             if(GEO){
-                test_case_1(g, 5, 2, 0.01, 50, 5, output_file);
+                test_case_1(g, 5, 2, 0.01, 50, 5, 100, output_file);
             }else{
-                test_case_1(g, 0.5, 2, 0.01, 50, 5, output_file);
+                test_case_1(g, 0.5, 2, 0.01, 50, 5, 100, output_file);
             }
         }
     }else{
@@ -278,10 +255,10 @@ int main(){
         std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
         std::cout << "Time to build all grids: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() / 1000.0 << "s" << std::endl;
         
-        test_case_3(grids, g, rs, 0.84, end_i); 
-        test_case_3(grids, g, rs, 1.27, end_i);
-        test_case_3(grids, g, rs, 1.93, end_i);
-        test_case_3(grids, g, rs, 3.03, end_i);
+        test_case_3(grids, g, rs, 0.84, 100, end_i); 
+        test_case_3(grids, g, rs, 1.27, 100, end_i);
+        test_case_3(grids, g, rs, 1.93, 100, end_i);
+        test_case_3(grids, g, rs, 3.03, 100, end_i);
         
         delete[] grids;
     }

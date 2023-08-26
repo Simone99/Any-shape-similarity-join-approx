@@ -2,7 +2,6 @@
 #define __CELL__
 
 #include <unordered_map>
-#include <list>
 #include <ostream>
 #include <iostream>
 #include <algorithm>
@@ -18,14 +17,10 @@
 #define CELL_DISTANCE_METHOD 2
 
 struct Cell{
-    // We use a list to support constant time insertion and deletion
-    // The list is going to be sorted
-    std::unordered_map<int, std::list<Point>> points_set;
+
+    std::unordered_map<int, std::vector<Point>> points_set;
     std::vector<int> m;
-    int m_c;
     std::vector<int> coordinates;
-    std::vector<Cell*> highest_priority_cells;
-    float priority;
 
     #if CELL_DISTANCE_METHOD == 1
     // If we check all vertices
@@ -106,13 +101,12 @@ struct Cell{
     }
     friend std::ostream& operator<<(std::ostream& os, const Cell& obj){
         os << "Cell:" <<std::endl;
-        for(const std::pair<int, std::list<Point>> n : obj.points_set ){
+        for(const std::pair<int, std::vector<Point>> n : obj.points_set ){
             os << "Color " << n.first << std::endl;
             for(const Point& p : n.second){
                 os << p << std::endl;
             }
         }
-        os << "Number of solutions: " << obj.m_c << std::endl;
         for(long unsigned int i = 0; i < obj.m.size(); i++){
             os << "m" << i << ": " << obj.m[i] << std::endl;
         }

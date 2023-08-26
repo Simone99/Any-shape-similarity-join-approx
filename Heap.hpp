@@ -3,13 +3,32 @@
 
 #include <vector>
 #include <functional>
+#include "Cell.hpp"
+#include <unordered_set>
+
+// Hash function from https://www.geeksforgeeks.org/unordered-set-of-vectors-in-c-with-examples/
+struct hashFunction 
+{
+  size_t operator()(const std::vector<int>& myVector) const 
+  {
+    std::hash<int> hasher;
+    size_t answer = 0;
+      
+    for (int i : myVector) 
+    {
+      answer ^= hasher(i) + 0x9e3779b9 + (answer << 6) + (answer >> 2);
+    }
+    return answer;
+  }
+};
 
 template<typename T>
 class Heap{
+
     private:
 
         std::vector<T> container;
-        std::function<bool(T, T)> comparison_function;
+        std::function<bool(T&, T&)> comparison_function;
 
     public:
 
@@ -19,23 +38,51 @@ class Heap{
         ~Heap(){
 
         };
-        Heap(std::function<bool(T, T)> comparison_function){
+        Heap(std::function<bool(T&, T&)> comparison_function){
             this->comparison_function = comparison_function;
         };
-        void set_comparison_function(std::function<bool(T, T)> comparison_function){
+        void set_comparison_function(std::function<bool(T&, T&)> comparison_function){
             this->comparison_function = comparison_function;
         };
-        void push(T cell_to_add){
-            this->container.push_back(cell_to_add);
+        void push(T to_add){
+            this->container.push_back(to_add);
             std::push_heap(this->container.begin(), this->container.end(), this->comparison_function);
         };
-        T first(){
+        T* first(){
             if(this->container.empty()) return nullptr;
-            return this->container[0];
+            return &this->container[0];
         };
         void update_heap(){
             std::make_heap(this->container.begin(), this->container.end(), this->comparison_function);
         };
+        void pop(){
+            pop_heap(this->container.begin(), this->container.end());
+            this->container.pop_back();
+            return;
+        };
+        T* search_element(T el){
+            for(auto it = this->container.begin(); it != this->container.end(); it++){
+                if(*it == el)
+                    return &(*it);
+            }
+            return nullptr;
+        };
+        std::vector<T>* get_container(){
+            return &(this->container);
+        };
+};
+
+struct HeapNode{
+    std::vector<Cell*> cells;
+    // Heap used to store the indices of the points that lead to a solution with the priority stored within the node.
+    // It's used just in the reporting phase and it's reset at the end to just one solution containing all zeros.
+    Heap<std::vector<int>> solutions_heap;
+    std::unordered_set<std::vector<int>, hashFunction> indices_used;
+    float priority;
+
+    friend bool operator==(const HeapNode& l, const HeapNode& r){
+        return l.cells == r.cells;
+    }
 };
 
 #endif
