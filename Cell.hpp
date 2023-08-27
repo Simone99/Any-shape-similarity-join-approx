@@ -39,7 +39,7 @@ struct Cell{
             for(const std::pair<int, std::vector<Point>> set_b : other.points_set){
                 for(Point a : set_a.second){
                     for(const Point& b : set_b.second){
-                        float distance = a.euclidean_distance_from(b);
+                        float distance = a.distance_from(b);
                         if(distance < min_distance)
                             min_distance = distance;
                     }
@@ -51,7 +51,7 @@ struct Cell{
         #if CELL_DISTANCE_METHOD == 1
         for(const Point& a : this->cell_vertices){
             for(const Point& b : other.cell_vertices){
-                float distance = a.euclidean_distance_from(b);
+                float distance = a.distance_from(b);
                 if(distance < min_distance)
                     min_distance = distance;
             }
@@ -61,11 +61,11 @@ struct Cell{
         #if CELL_DISTANCE_METHOD == 2
         #if POINT_DISTANCE_METRIC == 0
         // Somehow it doesn't work
-        min_distance = this->cell_center.euclidean_distance_from(other.cell_center) - this->eps;
+        min_distance = this->cell_center.distance_from(other.cell_center) - this->eps;
         #endif
         #if POINT_DISTANCE_METRIC == 1
         // Somehow it doesn't work
-        min_distance = this->cell_center.euclidean_distance_from(other.cell_center) - this->eps;
+        min_distance = this->cell_center.distance_from(other.cell_center) - this->eps;
         #endif
         #if POINT_DISTANCE_METRIC == 2
         min_distance = this->cell_center.distance_from(other.cell_center) - sqrt(cell_center.coordinates.size()) * this->eps;
