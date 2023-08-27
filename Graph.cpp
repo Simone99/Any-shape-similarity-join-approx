@@ -9,6 +9,7 @@ Graph::Graph(std::ifstream& input_file){
         input_file >> u >> v;
         this->adj_list[u].push_back(v);
         this->adj_list[v].push_back(u);
+        this->edge_list.push_back(std::pair<int, int>(u, v));
     }
 };
 

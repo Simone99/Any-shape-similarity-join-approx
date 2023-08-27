@@ -8,8 +8,7 @@ auto comparison_function_for_heap = [](HeapNode& a, HeapNode& b){
         return a.priority < b.priority;
     };
 
-// auto priority_function = [](float distance, float R){return log10(R / distance);};
-auto priority_function = [](float distance, float R, int k){return log10(k * R / distance);};
+auto priority_function = [](float distance, float R, int e){return e * R / distance;};
 
 // https://www.geeksforgeeks.org/binary-search/
 template<typename T>
@@ -189,32 +188,11 @@ void Grid::update_priority(AVLNode<Cell>* cell_node, const Graph& g, int color, 
 };
 
 float Grid::get_priority(std::vector<Cell*>& sol, const Graph& g, auto&& priority_function){
-  // Queue for BFS
-  std::queue<int> Q;
-  // Initialize bool vector for keeping track of visited nodes
-  std::vector<bool> visited;
-  for(int i = 0; i < g.V; i++){
-      visited.push_back(false);
-  }
-  visited[0] = true;
-  // Insert vertex into queue
-  Q.push(0);
-  // Initialize variables
   float result = 0;
-  // Start BFS loop
-  while (!Q.empty())
-  {
-      int v_j = Q.front();
-      Q.pop();
-      for(int v_h : g.adj_list[v_j]){
-          if(!visited[v_h]){
-              visited[v_h] = true;
-              Q.push(v_h);
-          }
-          result += sol[v_j]->distance_from(*sol[v_h]);
-      }
+  for(std::pair<int, int> edge : g.edge_list){
+    result += sol[edge.first]->distance_from(*sol[edge.second]);
   }
-  return priority_function(result, this->R, g.V);
+  return priority_function(result, this->R, g.E);
 };
 
 void Grid::add_point(int color, const Point& p, const Graph& g){
