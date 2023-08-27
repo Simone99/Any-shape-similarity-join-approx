@@ -210,7 +210,7 @@ int main(){
         if(TEST_CASE_SWITCH){
             // Tests with different R
             std::cout << "Running tests with different k..." << std::endl;
-            test_case(g, 1.5, 2, 0.1, 100, output_file);
+            test_case(g, 1.5, 2, 0.1, 1000, output_file);
         }else{
             if(GEO){
                 test_case_1(g, 5, 2, 0.01, 50, 5, 100, output_file);

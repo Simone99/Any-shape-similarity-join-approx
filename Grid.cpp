@@ -8,7 +8,8 @@ auto comparison_function_for_heap = [](HeapNode& a, HeapNode& b){
         return a.priority < b.priority;
     };
 
-auto priority_function = [](float distance, float R){return log10(R / distance);};
+// auto priority_function = [](float distance, float R){return log10(R / distance);};
+auto priority_function = [](float distance, float R, int k){return log10(k * R / distance);};
 
 // https://www.geeksforgeeks.org/binary-search/
 template<typename T>
@@ -210,10 +211,10 @@ float Grid::get_priority(std::vector<Cell*>& sol, const Graph& g, auto&& priorit
               visited[v_h] = true;
               Q.push(v_h);
           }
-          result += priority_function(sol[v_j]->distance_from(*sol[v_h]), this->R);
+          result += sol[v_j]->distance_from(*sol[v_h]);
       }
   }
-  return result;
+  return priority_function(result, this->R, g.V);
 };
 
 void Grid::add_point(int color, const Point& p, const Graph& g){
