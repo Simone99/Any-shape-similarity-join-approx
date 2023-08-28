@@ -19,7 +19,6 @@
 struct Cell{
 
     std::unordered_map<int, std::vector<Point>> points_set;
-    std::vector<int> m;
     std::vector<int> coordinates;
 
     #if CELL_DISTANCE_METHOD == 1
@@ -106,9 +105,6 @@ struct Cell{
             for(const Point& p : n.second){
                 os << p << std::endl;
             }
-        }
-        for(long unsigned int i = 0; i < obj.m.size(); i++){
-            os << "m" << i << ": " << obj.m[i] << std::endl;
         }
         os << "Coordinates: ";
         for(const int coordinate : obj.coordinates){
